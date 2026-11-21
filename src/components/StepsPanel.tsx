@@ -4,7 +4,7 @@ import { buildBom, resolveItem } from "../lib/model";
 import type { PdfDoc } from "../lib/pdf";
 import { useStore } from "../lib/store";
 import type { Step, StepItem } from "../lib/types";
-import { PartThumb } from "./Library";
+import { ColoredPart } from "./Library";
 import { MatchFlow, PartPicker } from "./PartPicker";
 import { PartEditor } from "./PartEditor";
 import { StepCrop } from "./PdfViewer";
@@ -189,11 +189,10 @@ function ItemRow({ step, item }: { step: Step; item: StepItem }) {
   const setPanel = useStore((s) => s.setPanel);
   const edit = () => setPanel({ kind: "editItem", stepId: step.id, itemId: item.id });
   const r = resolveItem(project, item);
-  const mb = r.spec ? partsById.get(r.spec.presetId) : undefined;
 
   return (
     <div className="item">
-      <div className="item-img">{r.inv?.imgUrl ? <img src={r.inv.imgUrl} alt="" /> : mb ? <PartThumb part={mb} size={40} /> : null}</div>
+      <div className="item-img">{r.spec ? <ColoredPart spec={r.spec} hex={r.color.hex} size={44} badge={r.inv?.imgUrl} /> : r.inv?.imgUrl ? <img src={r.inv.imgUrl} alt="" /> : null}</div>
       <div className="item-text">
         <button className="link item-title" onClick={edit} title={r.inv ? "Change the MachineBlocks part for this LEGO part" : "Edit part"}>
           {r.title}
@@ -231,7 +230,7 @@ function Totals() {
             return (
               <tr key={l.key}>
                 <td className="num-cell">{l.qty}×</td>
-                <td>{p && <PartThumb part={p} size={32} />}</td>
+                <td>{p && <ColoredPart spec={l.spec} hex={l.color.hex} size={36} />}</td>
                 <td>
                   {l.name}
                   <div className="muted small">steps {l.steps.join(", ")}</div>

@@ -76,6 +76,8 @@ export interface Project {
   matches: Record<string, Match>;
   /** LEGO color id -> filament color */
   colorMap: Record<string, Color>;
+  /** most recently picked colors, newest first */
+  recentColors?: ColorRef[];
   steps: Step[];
 }
 

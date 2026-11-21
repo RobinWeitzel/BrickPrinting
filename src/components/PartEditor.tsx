@@ -4,7 +4,7 @@ import { resolveColor } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, ParamValue, PartSpec } from "../lib/types";
 import { Preview3D } from "./Preview3D";
-import { ColorPicker, Modal, Qty } from "./ui";
+import { ColorPicker, Modal, Qty, RecentSwatches } from "./ui";
 
 interface Props {
   title: string;
@@ -22,7 +22,11 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
   const project = useStore((s) => s.project)!;
   const filaments = useStore((s) => s.settings.filaments);
   const [spec, setSpec] = useState(initial);
-  const [color, setColor] = useState<ColorRef>(initialColor ?? (legoColorId !== undefined ? { lego: legoColorId } : { custom: filaments[0] ?? { name: "Light Bluish Gray", hex: "#A0A5A9" } }));
+  const pushRecentColor = useStore((s) => s.pushRecentColor);
+  // new library parts start in the last color used
+  const [color, setColor] = useState<ColorRef>(
+    initialColor ?? (legoColorId !== undefined ? { lego: legoColorId } : (project.recentColors?.[0] ?? { custom: filaments[0] ?? { name: "Light Bluish Gray", hex: "#A0A5A9" } })),
+  );
   const [qty, setQty] = useState(initialQty ?? 1);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const part = partsById.get(spec.presetId)!;
@@ -77,7 +81,16 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
         <div className="editor-form">
           <div className="field">
             <label>Color</label>
-            <ColorPicker value={color} onChange={setColor} legoColorId={legoColorId} />
+            <div className="row gap wrap">
+              <ColorPicker value={color} onChange={setColor} legoColorId={legoColorId} />
+              <RecentSwatches
+                value={color}
+                onPick={(c) => {
+                  setColor(c);
+                  pushRecentColor(c);
+                }}
+              />
+            </div>
           </div>
           {size && (
             <div className="field">

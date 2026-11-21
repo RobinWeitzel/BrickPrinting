@@ -64,10 +64,13 @@ export function ColorPicker({ value, onChange, legoColorId }: { value: ColorRef;
   const setColors = new Map<number, Color>();
   for (const i of project.inventory) if (!setColors.has(i.colorId)) setColors.set(i.colorId, { name: i.colorName, hex: i.colorHex });
 
+  const pushRecentColor = useStore((s) => s.pushRecentColor);
   const pick = (c: ColorRef) => {
     onChange(c);
+    pushRecentColor(c);
     setOpen(false);
   };
+  const recent = project.recentColors ?? [];
 
   return (
     <div className="color-picker" ref={ref}>
@@ -77,6 +80,12 @@ export function ColorPicker({ value, onChange, legoColorId }: { value: ColorRef;
       </button>
       {open && (
         <div className="popover">
+          {recent.length > 0 && (
+            <>
+              <div className="popover-title">Recently used</div>
+              <RecentSwatches value={value} onPick={pick} size={22} />
+            </>
+          )}
           {legoColorId !== undefined && (
             <>
               <div className="popover-title">LEGO color</div>
@@ -110,13 +119,40 @@ export function ColorPicker({ value, onChange, legoColorId }: { value: ColorRef;
   );
 }
 
+/** One-click swatches of the project's recently picked colors. */
+export function RecentSwatches({ value, onPick, size = 18 }: { value?: ColorRef; onPick: (c: ColorRef) => void; size?: number }) {
+  const project = useStore((s) => s.project)!;
+  const recent = project.recentColors ?? [];
+  const cur = value && JSON.stringify(value);
+  return (
+    <div className="swatch-grid">
+      {recent.map((r) => {
+        const c = resolveColor(project, r);
+        return (
+          <button key={JSON.stringify(r)} className={`swatch-btn ${JSON.stringify(r) === cur ? "active" : ""}`} onClick={() => onPick(r)} title={c.name}>
+            <Swatch color={c} size={size} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function CustomColor({ initial, onPick, button = "Use" }: { initial: Color; onPick: (c: Color) => void; button?: string }) {
   const [hex, setHex] = useState(initial.hex);
   const [name, setName] = useState(initial.name);
   return (
     <div className="custom-color">
-      <input type="color" value={hex} onChange={(e) => setHex(e.target.value)} />
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+      <input
+        type="color"
+        value={hex}
+        onChange={(e) => {
+          setHex(e.target.value);
+          // don't keep a name that belongs to the previous color
+          if (name === initial.name && e.target.value.toLowerCase() !== initial.hex.toLowerCase()) setName("");
+        }}
+      />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (optional)" />
       <button onClick={() => onPick({ name: name || hex, hex })}>{button}</button>
     </div>
   );

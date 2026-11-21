@@ -1,18 +1,132 @@
 import { useMemo, useState } from "react";
-import { partsById, specName, suggestForLegoName, type CatalogPart, type Suggestion } from "../lib/catalog";
+import { partsById, specKey, specName, suggestForLegoName, type CatalogPart, type Suggestion } from "../lib/catalog";
 import { resolveItem, usageByInvKey } from "../lib/model";
 import { useStore } from "../lib/store";
-import type { InventoryPart, PartSpec } from "../lib/types";
-import { LibraryBrowser, PartThumb } from "./Library";
+import type { ColorRef, InventoryPart, PartSpec, Project } from "../lib/types";
+import { ColoredPart, LibraryBrowser, PartThumb } from "./Library";
 import { PartEditor } from "./PartEditor";
 import { Modal, Swatch } from "./ui";
 
-/** Add parts to a step: pick from the set inventory, or from the MachineBlocks library. */
+type PickerTab = "used" | "set" | "library";
+
+interface UsedPart {
+  key: string;
+  invKey?: string;
+  spec?: PartSpec;
+  color: ColorRef;
+  title: string;
+  subtitle?: string;
+  hex: string;
+  colorName: string;
+  imgUrl?: string;
+  /** spec used to render the thumbnail (explicit or via the LEGO part's match) */
+  renderSpec?: PartSpec;
+  qty: number;
+  steps: string[];
+  remaining?: number;
+  lastIndex: number;
+}
+
+/** Every distinct part + color already placed in the build, most recently used first. */
+function collectUsedParts(project: Project): UsedPart[] {
+  const used = usageByInvKey(project);
+  const m = new Map<string, UsedPart>();
+  project.steps.forEach((s, idx) => {
+    for (const i of s.items) {
+      const r = resolveItem(project, i);
+      const key = `${i.invKey ?? ""}|${i.spec ? specKey(i.spec) : ""}|${JSON.stringify(i.color)}`;
+      const e = m.get(key);
+      if (e) {
+        e.qty += i.qty;
+        if (!e.steps.includes(s.label)) e.steps.push(s.label);
+        e.lastIndex = idx;
+        continue;
+      }
+      m.set(key, {
+        key,
+        invKey: i.invKey,
+        spec: i.spec,
+        color: i.color,
+        title: r.title,
+        subtitle: r.subtitle,
+        hex: r.color.hex,
+        colorName: r.color.name,
+        imgUrl: r.inv?.imgUrl,
+        renderSpec: r.spec,
+        qty: i.qty,
+        steps: [s.label],
+        remaining: r.inv ? r.inv.qty - (used.get(r.inv.key) ?? 0) : undefined,
+        lastIndex: idx,
+      });
+    }
+  });
+  return [...m.values()].sort((a, b) => b.lastIndex - a.lastIndex);
+}
+
+function UsedPartsList({ parts, onAdd }: { parts: UsedPart[]; onAdd: (u: UsedPart) => void }) {
+  const [query, setQuery] = useState("");
+  const q = query.toLowerCase();
+  const list = parts.filter((u) => !q || `${u.title} ${u.subtitle ?? ""} ${u.colorName}`.toLowerCase().includes(q));
+  if (!parts.length)
+    return (
+      <div className="empty">
+        <p>Nothing used yet.</p>
+        <p className="muted">Parts you add to any step show up here, so you can reuse the same part and color with one click.</p>
+      </div>
+    );
+  return (
+    <div>
+      <input autoFocus className="search" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <p className="muted small">Same part and color as in earlier steps. Click to add one to this step. Most recently used first.</p>
+      <div className="inv-grid">
+        {list.map((u) => (
+          <button key={u.key} className="inv-card used-card" onClick={() => onAdd(u)} title="Add one to this step">
+            <div className="inv-main">
+              <div className="inv-img">{u.renderSpec ? <ColoredPart spec={u.renderSpec} hex={u.hex} size={52} badge={u.imgUrl} /> : u.imgUrl ? <img src={u.imgUrl} alt="" /> : null}</div>
+              <div className="inv-text">
+                <div className="inv-name">{u.title}</div>
+                <div className="muted small">
+                  <Swatch color={{ name: u.colorName, hex: u.hex }} size={10} /> {u.colorName}
+                </div>
+                <div className="small muted">
+                  {u.qty}× in step{u.steps.length > 1 ? "s" : ""} {u.steps.join(", ")}
+                </div>
+                {u.remaining !== undefined && <div className={`small ${u.remaining <= 0 ? "warn-text" : ""}`}>{u.remaining > 0 ? `${u.remaining} left in set` : "none left in set"}</div>}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Add parts to a step: reuse parts from earlier steps, pick from the set inventory, or from the MachineBlocks library. */
 export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () => void }) {
   const project = useStore((s) => s.project)!;
   const addItem = useStore((s) => s.addItem);
   const hasInventory = project.inventory.length > 0;
-  const [tab, setTab] = useState<"set" | "library">(hasInventory ? "set" : "library");
+  const usedParts = useMemo(() => collectUsedParts(project), [project]);
+  const [tab, setTabState] = useState<PickerTab>(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("bp.pickerTab");
+    } catch {
+      /* ignore */
+    }
+    if (saved === "used" && usedParts.length) return "used";
+    if (saved === "library") return "library";
+    if (saved === "set" && hasInventory) return "set";
+    return usedParts.length ? "used" : hasInventory ? "set" : "library";
+  });
+  const setTab = (t: PickerTab) => {
+    setTabState(t);
+    try {
+      localStorage.setItem("bp.pickerTab", t);
+    } catch {
+      /* ignore */
+    }
+  };
   const [editing, setEditing] = useState<PartSpec | null>(null);
   const [matching, setMatching] = useState<InventoryPart | null>(null);
   const [flash, setFlash] = useState("");
@@ -47,6 +161,9 @@ export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () =>
     <Modal title={`Add parts to step ${step.label}`} onClose={onClose} wide footer={<>{flash && <span className="flash">✓ {flash}</span>}<span className="spacer" /><button className="primary" onClick={onClose}>Done</button></>}>
       <StepSummary stepId={stepId} />
       <div className="tabs">
+        <button className={tab === "used" ? "active" : ""} onClick={() => setTab("used")} title="Parts you already used in earlier steps">
+          Used in this build <span className="badge">{usedParts.length}</span>
+        </button>
         <button className={tab === "set" ? "active" : ""} onClick={() => setTab("set")}>
           From set {project.set ? project.set.num : ""}
         </button>
@@ -54,7 +171,15 @@ export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () =>
           MachineBlocks library
         </button>
       </div>
-      {tab === "set" ? (
+      {tab === "used" ? (
+        <UsedPartsList
+          parts={usedParts}
+          onAdd={(u) => {
+            addItem(stepId, { invKey: u.invKey, spec: u.spec, color: u.color, qty: 1 });
+            added(`Added 1× ${u.title}`);
+          }}
+        />
+      ) : tab === "set" ? (
         hasInventory ? (
           <InventoryPickList
             onAdd={(inv) => {

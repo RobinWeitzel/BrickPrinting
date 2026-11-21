@@ -1,6 +1,6 @@
 import { del, get, set } from "idb-keyval";
 import { create } from "zustand";
-import type { Color, InventoryPart, Match, Project, ProjectSummary, Settings, Step, StepItem } from "./types";
+import type { Color, ColorRef, InventoryPart, Match, Project, ProjectSummary, Settings, Step, StepItem } from "./types";
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
@@ -46,6 +46,7 @@ interface State {
   setInventory(set: Project["set"], inv: InventoryPart[]): void;
   setMatch(partNum: string, match: Match | null): void;
   setColorMapping(colorId: number, color: Color | null): void;
+  pushRecentColor(c: ColorRef): void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -208,6 +209,14 @@ export const useStore = create<State>((setState, getState) => {
         else delete matches[partNum];
         return { ...p, matches };
       });
+    },
+    pushRecentColor(c) {
+      const p = getState().project;
+      if (!p) return;
+      const k = JSON.stringify(c);
+      const prev = p.recentColors ?? [];
+      if (JSON.stringify(prev[0]) === k) return;
+      update((p) => ({ ...p, recentColors: [c, ...prev.filter((x) => JSON.stringify(x) !== k)].slice(0, 10) }));
     },
     setColorMapping(colorId, color) {
       update((p) => {

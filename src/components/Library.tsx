@@ -1,9 +1,34 @@
-import { useMemo, useState } from "react";
-import { catalog, searchParts, thumbUrl, type CatalogPart, type Suggestion } from "../lib/catalog";
+import { useEffect, useMemo, useState } from "react";
+import { catalog, partsById, searchParts, thumbUrl, type CatalogPart, type Suggestion } from "../lib/catalog";
+import { partThumbnail } from "../lib/thumbs";
+import type { PartSpec } from "../lib/types";
 
 export function PartThumb({ part, size = 64 }: { part: CatalogPart; size?: number }) {
   const url = thumbUrl(part);
   return <div className="part-thumb" style={{ width: size, height: size }}>{url ? <img src={url} alt="" loading="lazy" /> : <span>?</span>}</div>;
+}
+
+/** A part rendered from its 3D model in the given color (falls back to the catalog thumbnail while loading). */
+export function ColoredPart({ spec, hex, size = 40, badge }: { spec: PartSpec; hex: string; size?: number; badge?: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const key = JSON.stringify(spec) + hex;
+  useEffect(() => {
+    let alive = true; // keep the previous image until the new one is ready (no flicker)
+    partThumbnail(spec, hex)
+      .then((u) => alive && setUrl(u))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const fallback = partsById.get(spec.presetId);
+  return (
+    <div className="colored-part" style={{ width: size, height: size }}>
+      {url ? <img src={url} alt="" /> : fallback ? <PartThumb part={fallback} size={size} /> : null}
+      {badge && <img className="colored-part-badge" src={badge} alt="" title="LEGO part" />}
+    </div>
+  );
 }
 
 /** Browsable MachineBlocks catalog. */

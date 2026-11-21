@@ -3,7 +3,7 @@ import { partsById } from "../lib/catalog";
 import { download, exportBom, type ExportMode, type ExportProgress } from "../lib/export";
 import { buildBom } from "../lib/model";
 import { useStore } from "../lib/store";
-import { PartThumb } from "./Library";
+import { ColoredPart } from "./Library";
 import { Modal, Swatch } from "./ui";
 
 const MODES: { id: ExportMode; title: string; text: string }[] = [
@@ -111,7 +111,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
             return (
               <tr key={l.key}>
                 <td className="num-cell">{l.qty}×</td>
-                <td>{p && <PartThumb part={p} size={32} />}</td>
+                <td>{p && <ColoredPart spec={l.spec} hex={l.color.hex} size={36} />}</td>
                 <td>
                   {l.name}
                   {l.legoParts.length > 0 && <div className="muted small">LEGO #{l.legoParts.join(", #")}</div>}
