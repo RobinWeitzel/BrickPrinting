@@ -1,0 +1,92 @@
+export type ParamValue = number | boolean | string | ParamValue[];
+export type ParamValues = Record<string, ParamValue>;
+
+/** A MachineBlocks part: a preset from the catalog plus parameter overrides. */
+export interface PartSpec {
+  presetId: string;
+  overrides: ParamValues;
+}
+
+export interface Color {
+  name: string;
+  hex: string; // "#RRGGBB"
+}
+
+/** One line of the LEGO set inventory (part + color). */
+export interface InventoryPart {
+  key: string; // `${partNum}:${colorId}` (+ ":spare" for spares)
+  partNum: string;
+  name: string;
+  imgUrl?: string;
+  colorId: number;
+  colorName: string;
+  colorHex: string;
+  qty: number;
+  isSpare: boolean;
+}
+
+export type Match =
+  | { kind: "mb"; spec: PartSpec }
+  | { kind: "none"; note?: string };
+
+/** Color of an item: either follows the LEGO color (via the project color map) or is set explicitly. */
+export type ColorRef = { lego: number } | { custom: Color };
+
+export interface StepItem {
+  id: string;
+  qty: number;
+  /** Link to an inventory line. The MachineBlocks part then comes from the project's matches. */
+  invKey?: string;
+  /** Explicit part (used when not linked to the inventory, or to override the match). */
+  spec?: PartSpec;
+  color: ColorRef;
+}
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+} // normalized 0..1 page coordinates
+
+export interface Step {
+  id: string;
+  page: number; // 1-based
+  label: string;
+  rect?: Rect;
+  items: StepItem[];
+}
+
+export interface PdfInfo {
+  name: string;
+  size: number;
+  fingerprint: string;
+  pages: number;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  pdf?: PdfInfo;
+  set?: { num: string; name: string; imgUrl?: string };
+  inventory: InventoryPart[];
+  /** LEGO part number -> MachineBlocks match */
+  matches: Record<string, Match>;
+  /** LEGO color id -> filament color */
+  colorMap: Record<string, Color>;
+  steps: Step[];
+}
+
+export interface Settings {
+  filaments: Color[];
+  plate: { width: number; depth: number; spacing: number };
+}
+
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  updatedAt: number;
+  steps: number;
+}
