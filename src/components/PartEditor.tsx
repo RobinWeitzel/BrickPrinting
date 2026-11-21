@@ -4,7 +4,7 @@ import { resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, Cutout, ParamValue, PartSpec } from "../lib/types";
 import { Preview3D } from "./Preview3D";
-import { ColorPicker, Modal, NumberInput, Qty, RecentSwatches } from "./ui";
+import { ColorPicker, LDrawBadge, Modal, NumberInput, Qty, RecentSwatches } from "./ui";
 
 interface Props {
   title: string;
@@ -76,6 +76,11 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
               <div className="muted small">{part ? categoryName(part.category) : "My parts"}</div>
               <strong>{part?.name ?? custom?.name ?? "Missing custom part"}</strong>
               {custom && <div className="muted small">{custom.size.map((v) => v.toFixed(1)).join(" × ")} mm · {custom.fileName}</div>}
+              {custom?.ldraw && (
+                <div className="small warn-text">
+                  <LDrawBadge presetId={custom.id} /> Converted from LDraw: exact LEGO dimensions without print tolerances. Print a test piece to check the fit.
+                </div>
+              )}
             </div>
             {onChangeBase && <button onClick={onChangeBase}>Change base part</button>}
           </div>

@@ -171,7 +171,18 @@ export async function findLDrawPart(partNum: string): Promise<string | null> {
   if (!idx) return null;
   const pn = partNum.toLowerCase();
   const candidates = [pn, pn.replace(/pr\d+[a-z]?$/, ""), pn.replace(/(pat|pb)\d+[a-z]?$/, ""), pn.replace(/[a-z]$/, "")];
-  for (const c of candidates) if (c && idx.entries[`parts/${c}.dat`]) return c;
+  for (const c of candidates) {
+    if (!c || !idx.entries[`parts/${c}.dat`]) continue;
+    // follow "~Moved to xyz" placeholder files to the real part
+    let num = c;
+    for (let hop = 0; hop < 5; hop++) {
+      const first = ((await loadFile(`${num}.dat`)) ?? "").split(/\r?\n/)[0];
+      const moved = first.match(/~Moved to\s+(\S+)/i);
+      if (!moved || !idx.entries[`parts/${moved[1].toLowerCase()}.dat`]) break;
+      num = moved[1].toLowerCase();
+    }
+    return num;
+  }
   return null;
 }
 
@@ -203,7 +214,7 @@ export interface LDrawResult {
 export async function convertLDraw(main: string, extra?: Overrides): Promise<LDrawResult> {
   const out: number[] = [];
   const missing = new Set<string>();
-  const title = main.split(/\r?\n/)[0].replace(/^0\s*/, "").trim();
+  const title = main.split(/\r?\n/)[0].replace(/^0\s*/, "").replace(/^[~_=|]+/, "").trim();
 
   async function walk(text: string, m: M, invert: boolean, depth: number) {
     if (depth > 40) return;

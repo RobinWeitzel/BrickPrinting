@@ -6,7 +6,7 @@ import { useStore } from "../lib/store";
 import type { ColorRef, InventoryPart, PartSpec, Project } from "../lib/types";
 import { ColoredPart, LibraryBrowser, SpecIcon } from "./Library";
 import { PartEditor } from "./PartEditor";
-import { Modal, Swatch } from "./ui";
+import { LDrawBadge, Modal, Swatch } from "./ui";
 
 type PickerTab = "used" | "set" | "library";
 
@@ -85,7 +85,9 @@ function UsedPartsList({ parts, onAdd }: { parts: UsedPart[]; onAdd: (u: UsedPar
             <div className="inv-main">
               <div className="inv-img">{u.renderSpec ? <ColoredPart spec={u.renderSpec} hex={u.hex} size={52} badge={u.imgUrl} /> : u.imgUrl ? <img src={u.imgUrl} alt="" /> : null}</div>
               <div className="inv-text">
-                <div className="inv-name">{u.title}</div>
+                <div className="inv-name">
+                  {u.title} <LDrawBadge presetId={u.renderSpec?.presetId} />
+                </div>
                 <div className="muted small">
                   <Swatch color={{ name: u.colorName, hex: u.hex }} size={10} /> {u.colorName}
                 </div>
@@ -244,6 +246,7 @@ function InventoryPickList({ onAdd, onMatch }: { onAdd: (inv: InventoryPart) => 
               <button className={`inv-match ${m ? "" : "warn"}`} onClick={() => onMatch(inv)} title="Choose the MachineBlocks part used to print this LEGO part">
                 {m?.kind === "mb" ? <SpecIcon spec={m.spec} size={28} /> : null}
                 <span className="small">{m?.kind === "mb" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Match…"}</span>
+                {m?.kind === "mb" && <LDrawBadge presetId={m.spec.presetId} />}
               </button>
             </div>
           );

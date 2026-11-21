@@ -1,7 +1,20 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { ldrawOf } from "../lib/custom";
 import { legoColor, resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { Color, ColorRef } from "../lib/types";
+
+/** Marks parts converted from LDraw: exact LEGO dimensions, not tuned for printing. */
+export function LDrawBadge({ presetId }: { presetId?: string }) {
+  useStore((s) => s.customParts); // re-render when parts load
+  const num = ldrawOf(presetId);
+  if (!num) return null;
+  return (
+    <span className="ldraw-badge" title={`Converted from the LDraw model #${num}. LDraw uses exact LEGO dimensions without print tolerances, so it may fit tighter or looser than MachineBlocks parts. Print a test piece first.`}>
+      LDraw
+    </span>
+  );
+}
 
 /** When true, <Modal> renders as a docked side panel instead of an overlay. */
 export const InlineContext = createContext(false);

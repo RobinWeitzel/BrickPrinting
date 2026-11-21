@@ -7,7 +7,7 @@ import { ColoredPart } from "./Library";
 import { MatchFlow, PartPicker } from "./PartPicker";
 import { PartEditor } from "./PartEditor";
 import { StepCrop } from "./PdfViewer";
-import { ColorPicker, InlineContext, Qty, Swatch } from "./ui";
+import { ColorPicker, InlineContext, LDrawBadge, Qty, Swatch } from "./ui";
 
 const loadWidth = (key: string, fallback: number) => {
   try {
@@ -196,7 +196,12 @@ function ItemRow({ step, item }: { step: Step; item: StepItem }) {
         <button className="link item-title" onClick={edit} title={r.inv ? "Change the MachineBlocks part for this LEGO part" : "Edit part"}>
           {r.title}
         </button>
-        {r.subtitle && <div className={`small ${r.spec ? "muted" : "warn-text"}`}>{r.subtitle}</div>}
+        {r.subtitle && (
+          <div className={`small ${r.spec ? "muted" : "warn-text"}`}>
+            {r.subtitle} <LDrawBadge presetId={r.spec?.presetId} />
+          </div>
+        )}
+        {!r.subtitle && <LDrawBadge presetId={r.spec?.presetId} />}
         <div className="row gap-s">
           <ColorPicker value={item.color} onChange={(color) => updateItem(step.id, item.id, { color })} legoColorId={r.inv?.colorId} />
         </div>
@@ -230,7 +235,7 @@ function Totals() {
                 <td className="num-cell">{l.qty}×</td>
                 <td><ColoredPart spec={l.spec} hex={l.color.hex} size={36} /></td>
                 <td>
-                  {l.name}
+                  {l.name} <LDrawBadge presetId={l.spec.presetId} />
                   <div className="muted small">steps {l.steps.join(", ")}</div>
                 </td>
                 <td>

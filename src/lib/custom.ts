@@ -24,6 +24,9 @@ const store = createStore("brickprinting-custom", "parts");
 
 export const isCustom = (presetId: string) => presetId.startsWith("custom:");
 
+/** LDraw part number if this preset is a part converted from LDraw. */
+export const ldrawOf = (presetId: string | undefined) => (presetId && isCustom(presetId) ? customIndex.get(presetId)?.ldraw : undefined);
+
 /** In-memory index of the metadata (kept in sync by the app store). */
 export const customIndex = new Map<string, CustomPartMeta>();
 

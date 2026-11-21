@@ -1188,6 +1188,20 @@ th {
   margin: 8px 0 0;
 }
 
+.ldraw-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: 4px;
+  padding: 0 4px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
 /* ---------- editor ---------- */
 .editor {
   display: flex;
