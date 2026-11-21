@@ -13,7 +13,7 @@ interface Props {
 
 export function Preview3D({ spec, color, height = 280 }: Props) {
   const host = useRef<HTMLDivElement>(null);
-  const ctx = useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; controls: OrbitControls; mesh?: THREE.Mesh } | null>(null);
+  const ctx = useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; controls: OrbitControls; mesh?: THREE.Mesh; axes?: THREE.Object3D[] } | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   const [error, setError] = useState("");
   const [dims, setDims] = useState<string>("");
@@ -81,6 +81,20 @@ export function Preview3D({ spec, color, height = 280 }: Props) {
           const mesh = new THREE.Mesh(geo, mat);
           c.mesh = mesh;
           c.scene.add(mesh);
+          // X / Y direction arrows from the part's corner (used for cut-out coordinates)
+          c.axes?.forEach((a) => c.scene.remove(a));
+          const len = Math.max(10, Math.min(m.max[0] - m.min[0], m.max[1] - m.min[1]) * 0.6);
+          const o = new THREE.Vector3(0, 0, 0.05);
+          c.axes = [new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), o, len, 0xe0453a, 3, 2), new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), o, len, 0x2f9e44, 3, 2)];
+          c.axes.forEach((a) => {
+            // always draw on top so the arrows stay visible under the part
+            a.traverse((o) => {
+              o.renderOrder = 10;
+              const mat = (o as THREE.Mesh).material as THREE.Material | undefined;
+              if (mat) mat.depthTest = false;
+            });
+            c.scene.add(a);
+          });
           const center = new THREE.Vector3((m.min[0] + m.max[0]) / 2, (m.min[1] + m.max[1]) / 2, (m.min[2] + m.max[2]) / 2);
           const r = Math.max(m.max[0] - m.min[0], m.max[1] - m.min[1], m.max[2] - m.min[2]);
           c.controls.target.copy(center);

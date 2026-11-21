@@ -7,6 +7,8 @@ export interface RenderRequest {
   scadUrl: string;
   fsUrl: string;
   defines: string[]; // ["size=[2,2,1]", ...]
+  /** rectangles in mm [x, y, w, d] removed through the full height */
+  cutouts?: [number, number, number, number][];
 }
 
 export type RenderResponse =
@@ -73,6 +75,22 @@ async function render(req: RenderRequest): Promise<RenderResponse> {
     out = FS.readFile("/out.stl", { encoding: "binary" });
   } catch {
     return { id: req.id, ok: false, error: "OpenSCAD produced no output", log };
+  }
+  if (req.cutouts?.length) {
+    // second pass: subtract the cut-outs from the finished part (works for every preset structure)
+    const inst2 = await createOpenSCAD({ print: (s) => log.push(s), printErr: (s) => log.push(s) });
+    const os2 = inst2.getInstance();
+    os2.FS.writeFile("/part.stl", out);
+    const cubes = req.cutouts.map(([x, y, w, d]) => `translate([${x}, ${y}, -50]) cube([${w}, ${d}, 200]);`).join("\n  ");
+    os2.FS.writeFile("/cut.scad", `difference() {\n  import("/part.stl");\n  ${cubes}\n}\n`);
+    let rc2: number;
+    try {
+      rc2 = os2.callMain(["/cut.scad", "-o", "/out.stl", "--backend=manifold", "--export-format=binstl"]);
+    } catch (e) {
+      return { id: req.id, ok: false, error: `Cut-out failed: ${e}`, log };
+    }
+    if (rc2 !== 0) return { id: req.id, ok: false, error: `Cut-out failed (code ${rc2})`, log };
+    out = os2.FS.readFile("/out.stl", { encoding: "binary" });
   }
   const stl = out.slice().buffer as ArrayBuffer;
   return { id: req.id, ok: true, stl, ms: Math.round(performance.now() - t0) };

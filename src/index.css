@@ -1123,6 +1123,30 @@ th {
   font-weight: 700;
 }
 
+.cutout-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+.cutout-row label {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.cutout-row input.num {
+  width: 52px;
+}
+.axis-x {
+  color: #e0453a;
+  font-weight: 700;
+}
+.axis-y {
+  color: #2f9e44;
+  font-weight: 700;
+}
+
 /* ---------- editor ---------- */
 .editor {
   display: flex;

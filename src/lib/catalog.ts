@@ -61,7 +61,8 @@ export function specKey(spec: PartSpec): string {
     if (p && JSON.stringify(p.defaults[k]) === JSON.stringify(spec.overrides[k])) continue;
     ov[k] = spec.overrides[k];
   }
-  return `${catalog.revision}|${spec.presetId}|${JSON.stringify(ov)}`;
+  const cuts = spec.cutouts?.length ? `|cut${JSON.stringify(spec.cutouts.map((c) => [c.x, c.y, c.w, c.d]))}` : "";
+  return `${catalog.revision}|${spec.presetId}|${JSON.stringify(ov)}${cuts}`;
 }
 
 function fmtSize(size: ParamValue | undefined) {
@@ -76,6 +77,7 @@ export function specName(spec: PartSpec): string {
   const p = partsById.get(spec.presetId);
   if (!p) return spec.presetId;
   const changed = Object.keys(spec.overrides).filter((k) => JSON.stringify(spec.overrides[k]) !== JSON.stringify(p.defaults[k]));
+  if (spec.cutouts?.length) return `${p.name} (custom)`;
   if (changed.length === 0) return p.name;
   if (changed.length === 1 && changed[0] === "size") return `${p.name} → ${fmtSize(spec.overrides.size)}`;
   return `${p.name} (custom)`;

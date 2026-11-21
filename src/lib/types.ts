@@ -1,10 +1,19 @@
 export type ParamValue = number | boolean | string | ParamValue[];
 export type ParamValues = Record<string, ParamValue>;
 
-/** A MachineBlocks part: a preset from the catalog plus parameter overrides. */
+/** A rectangle removed through the full height of a part, in studs from the part's corner (x along length, y across). */
+export interface Cutout {
+  x: number;
+  y: number;
+  w: number;
+  d: number;
+}
+
+/** A MachineBlocks part: a preset from the catalog plus parameter overrides and optional cut-outs. */
 export interface PartSpec {
   presetId: string;
   overrides: ParamValues;
+  cutouts?: Cutout[];
 }
 
 export interface Color {

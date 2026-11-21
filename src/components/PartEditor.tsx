@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { categoryName, partsById, schemaOf, type ParamSchema } from "../lib/catalog";
 import { resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
-import type { ColorRef, ParamValue, PartSpec } from "../lib/types";
+import type { ColorRef, Cutout, ParamValue, PartSpec } from "../lib/types";
 import { Preview3D } from "./Preview3D";
 import { ColorPicker, Modal, NumberInput, Qty, RecentSwatches } from "./ui";
 
@@ -60,7 +60,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
           )}
           <span className="spacer" />
           <button onClick={onClose}>Cancel</button>
-          <button className="primary" onClick={() => onSave({ presetId: spec.presetId, overrides: Object.fromEntries(changed.map((k) => [k, spec.overrides[k]])) }, color, qty)}>
+          <button className="primary" onClick={() => onSave({ presetId: spec.presetId, overrides: Object.fromEntries(changed.map((k) => [k, spec.overrides[k]])), ...(spec.cutouts?.length ? { cutouts: spec.cutouts } : {}) }, color, qty)}>
             {saveLabel}
           </button>
         </>
@@ -123,7 +123,8 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
                 ))}
               </fieldset>
             ))}
-          {changed.length > 0 && (
+          <CutoutEditor cutouts={spec.cutouts ?? []} size={size} onChange={(cutouts) => setSpec((s) => ({ ...s, cutouts }))} />
+          {(changed.length > 0 || !!spec.cutouts?.length) && (
             <button className="link" onClick={() => setSpec({ presetId: spec.presetId, overrides: {} })}>
               Reset to preset
             </button>
@@ -195,5 +196,47 @@ function ParamField({ schema, value, onChange, changed }: { schema: ParamSchema;
       {label}
       <input value={String(value)} onChange={(e) => onChange(e.target.value)} />
     </label>
+  );
+}
+
+/** Rectangles removed through the full height of the part (e.g. the notch of a wing plate). */
+function CutoutEditor({ cutouts, size, onChange }: { cutouts: Cutout[]; size?: number[]; onChange: (c: Cutout[]) => void }) {
+  const [open, setOpen] = useState(cutouts.length > 0);
+  const upd = (i: number, patch: Partial<Cutout>) => onChange(cutouts.map((c, j) => (j === i ? { ...c, ...patch } : c)));
+  return (
+    <>
+      <button className="link" onClick={() => setOpen(!open)}>
+        {open ? "▾" : "▸"} Cut-outs {cutouts.length > 0 && `(${cutouts.length})`}
+      </button>
+      {open && (
+        <fieldset>
+          <legend>Cut-outs</legend>
+          <p className="muted small">
+            Remove a rectangle through the whole part, in studs from the part's corner. <span className="axis-x">X</span> runs along the first size value,{" "}
+            <span className="axis-y">Y</span> along the second (see the arrows in the preview).
+          </p>
+          {cutouts.map((c, i) => (
+            <div key={i} className="cutout-row">
+              <label>
+                X <NumberInput value={c.x} step={0.5} min={-64} max={64} onChange={(x) => upd(i, { x })} />
+              </label>
+              <label>
+                Y <NumberInput value={c.y} step={0.5} min={-64} max={64} onChange={(y) => upd(i, { y })} />
+              </label>
+              <label>
+                Length <NumberInput value={c.w} step={0.5} min={0} max={64} onChange={(w) => upd(i, { w })} />
+              </label>
+              <label>
+                Width <NumberInput value={c.d} step={0.5} min={0} max={64} onChange={(d) => upd(i, { d })} />
+              </label>
+              <button className="icon danger" onClick={() => onChange(cutouts.filter((_, j) => j !== i))} aria-label="Remove cut-out">
+                ✕
+              </button>
+            </div>
+          ))}
+          <button onClick={() => onChange([...cutouts, { x: 0, y: Math.max(0, (size?.[1] ?? 2) - 1), w: 1, d: 1 }])}>+ Add cut-out</button>
+        </fieldset>
+      )}
+    </>
   );
 }

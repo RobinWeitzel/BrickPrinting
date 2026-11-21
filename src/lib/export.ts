@@ -29,7 +29,7 @@ async function renderAll(lines: BomLine[], onProgress: (p: ExportProgress) => vo
 
 function bomCsv(bom: BomResult) {
   const rows = [["Quantity", "Part", "Color", "Hex", "LEGO parts", "Steps", "MachineBlocks preset", "Overrides"]];
-  for (const l of bom.lines) rows.push([String(l.qty), l.name, l.color.name, l.color.hex, l.legoParts.join(" "), l.steps.join(" "), l.spec.presetId, JSON.stringify(l.spec.overrides)]);
+  for (const l of bom.lines) rows.push([String(l.qty), l.name, l.color.name, l.color.hex, l.legoParts.join(" "), l.steps.join(" "), l.spec.presetId, JSON.stringify(l.spec.cutouts?.length ? { ...l.spec.overrides, cutouts: l.spec.cutouts } : l.spec.overrides)]);
   for (const u of bom.unmatched) rows.push([String(u.qty), u.title, u.color.name, u.color.hex, "", u.steps.join(" "), "NOT MATCHED", ""]);
   return rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(",")).join("\n");
 }

@@ -22,6 +22,14 @@ function definesFor(spec: PartSpec): string[] {
   return out;
 }
 
+/** Cut-outs in mm (8 mm per stud, scaled with the part's scale setting). */
+function cutoutsMm(spec: PartSpec): [number, number, number, number][] | undefined {
+  if (!spec.cutouts?.length) return undefined;
+  const scale = Number(effectiveParams(spec).scale_ovr ?? 1) || 1;
+  const g = 8 * (effectiveParams(spec).overrideConfig ? scale : 1);
+  return spec.cutouts.filter((c) => c.w > 0 && c.d > 0).map((c) => [c.x * g, c.y * g, c.w * g, c.d * g]);
+}
+
 // ---- worker queue (single worker, serial) ----
 let worker: Worker | null = null;
 let nextId = 1;
@@ -63,6 +71,7 @@ export function renderStl(spec: PartSpec): Promise<ArrayBuffer> {
       scadUrl: new URL(scadUrl(spec.presetId), location.href).href,
       fsUrl: new URL(`${base}machineblocks/fs.json`, location.href).href,
       defines: definesFor(spec),
+      cutouts: cutoutsMm(spec),
     };
     const stl = await new Promise<ArrayBuffer>((resolve, reject) => {
       pending.set(id, { resolve, reject });
