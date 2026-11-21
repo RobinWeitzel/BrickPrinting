@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { specKey, specName, suggestForLegoName, type Suggestion } from "../lib/catalog";
 import { findLDrawPart } from "../lib/ldraw";
 import { resolveItem, usageByInvKey } from "../lib/model";
@@ -78,7 +78,7 @@ function UsedPartsList({ parts, onAdd }: { parts: UsedPart[]; onAdd: (u: UsedPar
   return (
     <div>
       <input autoFocus className="search" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} />
-      <p className="muted small">Same part and color as in earlier steps. Click to add one to this step. Most recently used first.</p>
+      <p className="muted small">Same part and color as in earlier steps. Click to add one to this step. Most recently used first (as of opening this panel).</p>
       <div className="inv-grid">
         {list.map((u) => (
           <button key={u.key} className="inv-card used-card" onClick={() => onAdd(u)} title="Add one to this step">
@@ -109,7 +109,17 @@ export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () =>
   const project = useStore((s) => s.project)!;
   const addItem = useStore((s) => s.addItem);
   const hasInventory = project.inventory.length > 0;
-  const usedParts = useMemo(() => collectUsedParts(project), [project]);
+  const usedPartsLive = useMemo(() => collectUsedParts(project), [project]);
+  // Keep the order fixed while the picker is open, so cards don't jump when clicked.
+  // The first time, parts are ranked most-recently-used first; parts that appear later go on top.
+  const order = useRef<Map<string, number> | null>(null);
+  const usedParts = useMemo(() => {
+    if (!order.current) order.current = new Map(usedPartsLive.map((u, i) => [u.key, i]));
+    const ranks = order.current;
+    let top = Math.min(0, ...ranks.values());
+    for (const u of usedPartsLive) if (!ranks.has(u.key)) ranks.set(u.key, --top);
+    return [...usedPartsLive].sort((a, b) => ranks.get(a.key)! - ranks.get(b.key)!);
+  }, [usedPartsLive]);
   const [tab, setTabState] = useState<PickerTab>(() => {
     let saved: string | null = null;
     try {
