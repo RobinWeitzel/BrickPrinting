@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { loadPdf, renderPage, type PdfDoc } from "../lib/pdf";
 import { useStore } from "../lib/store";
 import type { Rect } from "../lib/types";
+import { NumberInput } from "./ui";
 
 export function usePdfDoc() {
   const blob = useStore((s) => s.pdfBlob);
@@ -168,14 +169,7 @@ export function PdfViewer({ doc }: { doc: PdfDoc }) {
         </button>
         <span>
           Page{" "}
-          <input
-            type="number"
-            min={1}
-            max={numPages}
-            value={page}
-            onChange={(e) => setPage(Math.min(numPages, Math.max(1, Number(e.target.value) || 1)))}
-            className="page-input"
-          />{" "}
+          <NumberInput className="page-input" min={1} max={numPages} integer value={page} onChange={setPage} ariaLabel="Page" />{" "}
           / {numPages}
         </span>
         <button onClick={() => setPage(Math.min(numPages, page + 1))} disabled={page >= numPages} title="Next page (→)">

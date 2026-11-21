@@ -4,7 +4,7 @@ import { download, exportBom, type ExportMode, type ExportProgress } from "../li
 import { buildBom } from "../lib/model";
 import { useStore } from "../lib/store";
 import { ColoredPart } from "./Library";
-import { Modal, Swatch } from "./ui";
+import { Modal, NumberInput, Swatch } from "./ui";
 
 const MODES: { id: ExportMode; title: string; text: string }[] = [
   { id: "stl-zip", title: "STL files", text: "One STL per part type, sorted into a folder per color. Quantity is in the file name." },
@@ -86,10 +86,10 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         {mode !== "stl-zip" && (
           <label className="row gap-s">
             Plate
-            <input className="num" type="number" value={settings.plate.width} onChange={(e) => updateSettings({ plate: { ...settings.plate, width: Number(e.target.value) || 256 } })} />×
-            <input className="num" type="number" value={settings.plate.depth} onChange={(e) => updateSettings({ plate: { ...settings.plate, depth: Number(e.target.value) || 256 } })} />
+            <NumberInput min={20} max={1000} value={settings.plate.width} onChange={(width) => updateSettings({ plate: { ...settings.plate, width } })} />×
+            <NumberInput min={20} max={1000} value={settings.plate.depth} onChange={(depth) => updateSettings({ plate: { ...settings.plate, depth } })} />
             mm, gap
-            <input className="num" type="number" value={settings.plate.spacing} onChange={(e) => updateSettings({ plate: { ...settings.plate, spacing: Number(e.target.value) || 4 } })} />
+            <NumberInput min={0} max={50} step={0.5} value={settings.plate.spacing} onChange={(spacing) => updateSettings({ plate: { ...settings.plate, spacing } })} />
             mm
           </label>
         )}

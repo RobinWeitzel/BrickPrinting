@@ -4,7 +4,7 @@ import { resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, ParamValue, PartSpec } from "../lib/types";
 import { Preview3D } from "./Preview3D";
-import { ColorPicker, Modal, Qty, RecentSwatches } from "./ui";
+import { ColorPicker, Modal, NumberInput, Qty, RecentSwatches } from "./ui";
 
 interface Props {
   title: string;
@@ -93,19 +93,18 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
               <label>Size (studs × studs × height in plates)</label>
               <div className="row gap">
                 {size.map((v, i) => (
-                  <input
+                  <NumberInput
                     key={i}
-                    type="number"
-                    step={i === 2 ? 1 : 1}
-                    min={1}
+                    min={i === 2 ? 1 : 0.5}
                     max={64}
+                    step={1}
                     value={v}
-                    onChange={(e) => {
+                    ariaLabel={["Studs X", "Studs Y", "Height in plates"][i]}
+                    onChange={(val) => {
                       const n = [...size];
-                      n[i] = Number(e.target.value) || 1;
+                      n[i] = val;
                       set("size", n);
                     }}
-                    className="num"
                   />
                 ))}
                 <span className="muted small">{size[2] === 1 ? "plate" : size[2] === 3 ? "brick" : `${size[2] / 3} bricks`}</span>
@@ -169,15 +168,13 @@ function ParamField({ schema, value, onChange, changed }: { schema: ParamSchema;
             Array.isArray(v) ? (
               <code key={i}>{JSON.stringify(v)}</code>
             ) : (
-              <input
+              <NumberInput
                 key={i}
-                className="num"
-                type="number"
-                step={schema.step ?? "any"}
+                step={schema.step ?? 1}
                 value={v as number}
-                onChange={(e) => {
+                onChange={(val) => {
                   const n = [...value];
-                  n[i] = Number(e.target.value);
+                  n[i] = val;
                   onChange(n);
                 }}
               />
@@ -190,7 +187,7 @@ function ParamField({ schema, value, onChange, changed }: { schema: ParamSchema;
     return (
       <label className="param">
         {label}
-        <input className="num" type="number" step={schema.step ?? "any"} min={schema.min} max={schema.max} value={value} onChange={(e) => onChange(Number(e.target.value))} />
+        <NumberInput step={schema.step ?? 1} min={schema.min} max={schema.max} value={value} onChange={onChange} />
       </label>
     );
   return (

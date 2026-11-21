@@ -156,13 +156,88 @@ export function CustomColor({ initial, onPick, button = "Use" }: { initial: Colo
   );
 }
 
+const parseNum = (s: string) => {
+  const t = s.trim().replace(",", ".");
+  return /^-?(\d+\.?\d*|\.\d+)$/.test(t) ? Number(t) : NaN;
+};
+const fmtNum = (n: number) => String(Math.round(n * 1e6) / 1e6);
+
+/**
+ * Number field that can be cleared and typed into freely ("", "-", "0." …).
+ * Only valid numbers within min/max are applied; on blur the field shows the applied value again.
+ * Accepts "," as decimal separator. Arrow up/down step the value.
+ */
+export function NumberInput({
+  value,
+  onChange,
+  min,
+  max,
+  step = 1,
+  integer,
+  className = "num",
+  ariaLabel,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number;
+  max?: number;
+  step?: number;
+  integer?: boolean;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const [text, setText] = useState(fmtNum(value));
+  const [focused, setFocused] = useState(false);
+  // follow outside changes while not editing
+  useEffect(() => {
+    if (!focused) setText(fmtNum(value));
+  }, [value, focused]);
+  const valid = (n: number) => Number.isFinite(n) && (min === undefined || n >= min) && (max === undefined || n <= max) && (!integer || Number.isInteger(n));
+  const commit = (n: number) => {
+    if (valid(n) && n !== value) onChange(n);
+  };
+  return (
+    <input
+      className={className}
+      type="text"
+      inputMode={integer && (min ?? 0) >= 0 ? "numeric" : "decimal"}
+      aria-label={ariaLabel}
+      value={text}
+      onFocus={(e) => {
+        setFocused(true);
+        e.target.select();
+      }}
+      onChange={(e) => {
+        setText(e.target.value);
+        commit(parseNum(e.target.value));
+      }}
+      onBlur={() => {
+        setFocused(false);
+        setText(fmtNum(value));
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+        if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+        e.preventDefault();
+        const cur = parseNum(text);
+        let n = (Number.isFinite(cur) ? cur : value) + (e.key === "ArrowUp" ? step : -step);
+        n = Math.round(n * 1e6) / 1e6;
+        if (min !== undefined) n = Math.max(min, n);
+        if (max !== undefined) n = Math.min(max, n);
+        setText(fmtNum(n));
+        commit(n);
+      }}
+    />
+  );
+}
+
 export function Qty({ value, onChange, min = 1 }: { value: number; onChange: (v: number) => void; min?: number }) {
   return (
     <span className="qty">
       <button onClick={() => onChange(Math.max(min, value - 1))} aria-label="Decrease">
         −
       </button>
-      <input type="number" min={min} value={value} onChange={(e) => onChange(Math.max(min, Number(e.target.value) || min))} />
+      <NumberInput className="" value={value} onChange={onChange} min={min} integer ariaLabel="Quantity" />
       <button onClick={() => onChange(value + 1)} aria-label="Increase">
         +
       </button>
