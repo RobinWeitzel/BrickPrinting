@@ -9,8 +9,12 @@ const DEFAULT_SETTINGS: Settings = {
   plate: { width: 256, depth: 256, spacing: 4 },
 };
 
+export type SidePanel = { kind: "pick"; stepId: string } | { kind: "editItem"; stepId: string; itemId: string };
+
 interface State {
   ready: boolean;
+  panel: SidePanel | null;
+  setPanel(p: SidePanel | null): void;
   settings: Settings;
   projects: ProjectSummary[];
   project: Project | null;
@@ -74,6 +78,11 @@ export const useStore = create<State>((setState, getState) => {
 
   return {
     ready: false,
+    panel: null,
+    setPanel(panel) {
+      setState({ panel });
+      if (panel) getState().selectStep(panel.stepId);
+    },
     settings: DEFAULT_SETTINGS,
     projects: [],
     project: null,
@@ -95,20 +104,20 @@ export const useStore = create<State>((setState, getState) => {
 
     async createProject(name) {
       const p: Project = { id: uid(), name, createdAt: Date.now(), updatedAt: Date.now(), inventory: [], matches: {}, colorMap: {}, steps: [] };
-      setState({ project: p, pdfBlob: null, page: 1, selectedStepId: null });
+      setState({ project: p, pdfBlob: null, page: 1, selectedStepId: null, panel: null });
       await set("lastProject", p.id);
       persist();
     },
 
     async openProject(id) {
       if (!id) {
-        setState({ project: null, pdfBlob: null });
+        setState({ project: null, pdfBlob: null, panel: null });
         await del("lastProject");
         return;
       }
       const [p, blob] = await Promise.all([get<Project>(`project:${id}`), get<Blob>(`pdf:${id}`)]);
       if (!p) return;
-      setState({ project: { ...p, colorMap: p.colorMap ?? {} }, pdfBlob: blob ?? null, page: p.steps.at(-1)?.page ?? 1, selectedStepId: p.steps.at(-1)?.id ?? null });
+      setState({ panel: null, project: { ...p, colorMap: p.colorMap ?? {} }, pdfBlob: blob ?? null, page: p.steps.at(-1)?.page ?? 1, selectedStepId: p.steps.at(-1)?.id ?? null });
       await set("lastProject", id);
     },
 
@@ -162,6 +171,7 @@ export const useStore = create<State>((setState, getState) => {
     },
     deleteStep(id) {
       updateSteps((s) => s.filter((x) => x.id !== id));
+      if (getState().panel?.stepId === id) setState({ panel: null });
       if (getState().selectedStepId === id) setState({ selectedStepId: null });
     },
     selectStep(id) {

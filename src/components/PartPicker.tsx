@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { partsById, specName, suggestForLegoName, type CatalogPart, type Suggestion } from "../lib/catalog";
-import { usageByInvKey } from "../lib/model";
+import { resolveItem, usageByInvKey } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { InventoryPart, PartSpec } from "../lib/types";
 import { LibraryBrowser, PartThumb } from "./Library";
@@ -45,6 +45,7 @@ export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () =>
 
   return (
     <Modal title={`Add parts to step ${step.label}`} onClose={onClose} wide footer={<>{flash && <span className="flash">✓ {flash}</span>}<span className="spacer" /><button className="primary" onClick={onClose}>Done</button></>}>
+      <StepSummary stepId={stepId} />
       <div className="tabs">
         <button className={tab === "set" ? "active" : ""} onClick={() => setTab("set")}>
           From set {project.set ? project.set.num : ""}
@@ -187,5 +188,43 @@ export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => v
     >
       <LibraryBrowser suggestions={suggestions} onPick={(p: CatalogPart, s?: Suggestion) => setSpec(s?.spec ?? { presetId: p.id, overrides: {} })} />
     </Modal>
+  );
+}
+
+/** Compact list of what's already in the step, shown above the picker. */
+function StepSummary({ stepId }: { stepId: string }) {
+  const project = useStore((s) => s.project)!;
+  const updateItem = useStore((s) => s.updateItem);
+  const removeItem = useStore((s) => s.removeItem);
+  const step = project.steps.find((s) => s.id === stepId);
+  if (!step) return null;
+  const count = step.items.reduce((a, i) => a + i.qty, 0);
+  return (
+    <div className="step-summary">
+      <div className="step-summary-title">
+        In this step <span className="badge">{count}</span>
+      </div>
+      {step.items.length === 0 ? (
+        <div className="muted small">Nothing yet. Pick parts below.</div>
+      ) : (
+        <div className="chips">
+          {step.items.map((i) => {
+            const r = resolveItem(project, i);
+            return (
+              <span key={i.id} className={`chip ${r.spec ? "" : "warn"}`} title={r.subtitle ?? r.title}>
+                <Swatch color={r.color} size={12} />
+                <button className="chip-qty" onClick={() => updateItem(stepId, i.id, { qty: i.qty + 1 })} title="Add one more">
+                  {i.qty}×
+                </button>
+                <span className="chip-name">{r.title}</span>
+                <button className="chip-x" onClick={() => (i.qty > 1 ? updateItem(stepId, i.id, { qty: i.qty - 1 }) : removeItem(stepId, i.id))} title={i.qty > 1 ? "Remove one" : "Remove"}>
+                  −
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

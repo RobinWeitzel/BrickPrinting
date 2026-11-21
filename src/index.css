@@ -326,7 +326,7 @@ th {
 }
 .sidebar {
   width: 400px;
-  max-width: 45vw;
+  max-width: 75vw;
   background: var(--panel);
   border-left: 1px solid var(--border);
   display: flex;
@@ -902,6 +902,143 @@ th {
   color: var(--ok);
 }
 
+/* ---------- docked panel (picker / editor beside the PDF) ---------- */
+.sidebar {
+  position: relative;
+}
+.resizer {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: col-resize;
+  z-index: 5;
+}
+.resizer:hover,
+.resizer:active {
+  background: linear-gradient(90deg, transparent 3px, var(--accent) 3px, var(--accent) 5px, transparent 5px);
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg);
+}
+.panel .modal-head,
+.panel .modal-foot {
+  border-radius: 0;
+}
+.panel .modal-head h2 {
+  font-size: 15px;
+}
+.panel .modal-body {
+  padding: 12px;
+}
+.panel .library {
+  flex-direction: column;
+  gap: 8px;
+}
+.panel .library-side {
+  width: 100%;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.panel .library-side .search {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.panel .cat {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 3px 10px;
+  font-size: 12px;
+  gap: 6px;
+}
+.panel .part-grid {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 6px;
+}
+.panel .part-card {
+  padding: 6px 4px;
+  font-size: 11px;
+}
+.panel .part-card .part-thumb {
+  width: 72px !important;
+  height: 72px !important;
+}
+.panel .inv-grid {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.panel .editor {
+  flex-direction: column;
+  gap: 12px;
+}
+.panel .editor-preview {
+  width: 100%;
+  position: static;
+}
+.panel .preview3d {
+  height: 240px !important;
+}
+.panel .tabs {
+  padding: 0;
+}
+.step-summary {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+.step-summary-title {
+  font-weight: 600;
+  font-size: 12px;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1px 2px 1px 8px;
+  font-size: 12px;
+  max-width: 100%;
+}
+.chip.warn {
+  border-color: var(--warn);
+}
+.chip-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-qty,
+.chip-x {
+  border: none;
+  background: none;
+  padding: 0 4px;
+  font-size: 12px;
+}
+.chip-qty {
+  font-weight: 600;
+}
+.chip-x {
+  color: var(--muted);
+}
+
 /* ---------- editor ---------- */
 .editor {
   display: flex;
@@ -1070,9 +1207,9 @@ legend {
     flex-direction: column;
   }
   .sidebar {
-    width: 100%;
+    width: 100% !important;
     max-width: none;
-    height: 45%;
+    height: 55%;
     border-left: none;
     border-top: 1px solid var(--border);
   }
@@ -1091,5 +1228,31 @@ legend {
   }
   .mode-grid {
     grid-template-columns: 1fr;
+  }
+  .resizer {
+    display: none;
+  }
+  .topbar,
+  .pdf-toolbar {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .topbar .spacer {
+    display: none;
+  }
+  .project-title {
+    flex: 1 1 60%;
+    width: auto;
+  }
+  .topbar button,
+  .pdf-toolbar button {
+    padding: 5px 9px;
+    font-size: 13px;
+  }
+  .pdf-toolbar .hint {
+    display: none;
+  }
+  .pdf-toolbar .primary {
+    margin-left: auto;
   }
 }

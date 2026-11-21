@@ -31,6 +31,11 @@ interface CatalogData {
 }
 
 export const catalog = catalogJson as unknown as CatalogData;
+// natural order within each category: "Brick 1x1, Brick 2x1, … Brick 12x1" instead of "Brick 12x1, Brick 1x1"
+{
+  const catIdx = new Map(catalog.categories.map((c, i) => [c.id, i]));
+  catalog.parts.sort((a, b) => catIdx.get(a.category)! - catIdx.get(b.category)! || a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
 export const partsById = new Map(catalog.parts.map((p) => [p.id, p]));
 export const categoryName = (id: string) => catalog.categories.find((c) => c.id === id)?.name ?? id;
 

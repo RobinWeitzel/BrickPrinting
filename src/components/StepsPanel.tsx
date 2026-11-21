@@ -8,15 +8,58 @@ import { PartThumb } from "./Library";
 import { MatchFlow, PartPicker } from "./PartPicker";
 import { PartEditor } from "./PartEditor";
 import { StepCrop } from "./PdfViewer";
-import { ColorPicker, Qty, Swatch } from "./ui";
+import { ColorPicker, InlineContext, Qty, Swatch } from "./ui";
+
+const loadWidth = (key: string, fallback: number) => {
+  try {
+    return Number(localStorage.getItem(key)) || fallback;
+  } catch {
+    return fallback;
+  }
+};
 
 export function StepsPanel({ doc }: { doc: PdfDoc | null }) {
   const [tab, setTab] = useState<"steps" | "totals">("steps");
   const project = useStore((s) => s.project)!;
+  const panel = useStore((s) => s.panel);
   const total = project.steps.reduce((a, s) => a + s.items.reduce((b, i) => b + i.qty, 0), 0);
+
+  // resizable: separate widths for the step list and the docked part panel
+  const widthKey = panel ? "bp.panelWidth" : "bp.sidebarWidth";
+  const [widths, setWidths] = useState(() => ({ "bp.panelWidth": loadWidth("bp.panelWidth", 560), "bp.sidebarWidth": loadWidth("bp.sidebarWidth", 380) }));
+  const width = widths[widthKey];
+  const startResize = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const x0 = e.clientX;
+    const w0 = width;
+    let last = w0;
+    const move = (ev: PointerEvent) => {
+      last = Math.min(Math.max(300, w0 + (x0 - ev.clientX)), Math.round(window.innerWidth * 0.75));
+      setWidths((w) => ({ ...w, [widthKey]: last }));
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      try {
+        localStorage.setItem(widthKey, String(last));
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
+
   return (
-    <aside className="sidebar">
-      <div className="tabs">
+    <aside className="sidebar" style={{ width }}>
+      <div className="resizer" onPointerDown={startResize} title="Drag to resize" />
+      {panel ? (
+        <InlineContext.Provider value={true}>
+          <SidePanelContent />
+        </InlineContext.Provider>
+      ) : (
+        <>
+          <div className="tabs">
         <button className={tab === "steps" ? "active" : ""} onClick={() => setTab("steps")}>
           Steps <span className="badge">{project.steps.length}</span>
         </button>
@@ -24,8 +67,42 @@ export function StepsPanel({ doc }: { doc: PdfDoc | null }) {
           Parts so far <span className="badge">{total}</span>
         </button>
       </div>
-      {tab === "steps" ? <StepList doc={doc} /> : <Totals />}
+          {tab === "steps" ? <StepList doc={doc} /> : <Totals />}
+        </>
+      )}
     </aside>
+  );
+}
+
+/** Part picker / item editor docked next to the PDF. */
+function SidePanelContent() {
+  const panel = useStore((s) => s.panel)!;
+  const setPanel = useStore((s) => s.setPanel);
+  const project = useStore((s) => s.project)!;
+  const updateItem = useStore((s) => s.updateItem);
+  const close = () => setPanel(null);
+  if (panel.kind === "pick") return <PartPicker key={panel.stepId} stepId={panel.stepId} onClose={close} />;
+
+  const step = project.steps.find((s) => s.id === panel.stepId);
+  const item = step?.items.find((i) => i.id === panel.itemId);
+  if (!step || !item) return null;
+  const r = resolveItem(project, item);
+  if (r.inv) return <MatchFlow key={item.id} inv={r.inv} onDone={close} />;
+  if (!r.spec) return null;
+  return (
+    <PartEditor
+      key={item.id}
+      title={`Edit part in step ${step.label}`}
+      spec={r.spec}
+      color={item.color}
+      qty={item.qty}
+      saveLabel="Save"
+      onClose={close}
+      onSave={(spec, color, qty) => {
+        updateItem(step.id, item.id, { spec, color, qty });
+        close();
+      }}
+    />
   );
 }
 
@@ -70,7 +147,7 @@ function StepList({ doc }: { doc: PdfDoc | null }) {
 function StepDetail({ step }: { step: Step }) {
   const updateStep = useStore((s) => s.updateStep);
   const deleteStep = useStore((s) => s.deleteStep);
-  const [picking, setPicking] = useState(false);
+  const setPanel = useStore((s) => s.setPanel);
   return (
     <div className="step-detail">
       <div className="row gap wrap">
@@ -98,10 +175,9 @@ function StepDetail({ step }: { step: Step }) {
         ))}
         {step.items.length === 0 && <p className="muted small">No parts in this step yet.</p>}
       </div>
-      <button className="primary full" onClick={() => setPicking(true)}>
+      <button className="primary full" onClick={() => setPanel({ kind: "pick", stepId: step.id })}>
         + Add parts
       </button>
-      {picking && <PartPicker stepId={step.id} onClose={() => setPicking(false)} />}
     </div>
   );
 }
@@ -110,7 +186,8 @@ function ItemRow({ step, item }: { step: Step; item: StepItem }) {
   const project = useStore((s) => s.project)!;
   const updateItem = useStore((s) => s.updateItem);
   const removeItem = useStore((s) => s.removeItem);
-  const [editing, setEditing] = useState(false);
+  const setPanel = useStore((s) => s.setPanel);
+  const edit = () => setPanel({ kind: "editItem", stepId: step.id, itemId: item.id });
   const r = resolveItem(project, item);
   const mb = r.spec ? partsById.get(r.spec.presetId) : undefined;
 
@@ -118,7 +195,7 @@ function ItemRow({ step, item }: { step: Step; item: StepItem }) {
     <div className="item">
       <div className="item-img">{r.inv?.imgUrl ? <img src={r.inv.imgUrl} alt="" /> : mb ? <PartThumb part={mb} size={40} /> : null}</div>
       <div className="item-text">
-        <button className="link item-title" onClick={() => setEditing(true)} title={r.inv ? "Change the MachineBlocks part for this LEGO part" : "Edit part"}>
+        <button className="link item-title" onClick={edit} title={r.inv ? "Change the MachineBlocks part for this LEGO part" : "Edit part"}>
           {r.title}
         </button>
         {r.subtitle && <div className={`small ${r.spec ? "muted" : "warn-text"}`}>{r.subtitle}</div>}
@@ -132,21 +209,6 @@ function ItemRow({ step, item }: { step: Step; item: StepItem }) {
           ✕
         </button>
       </div>
-      {editing && r.inv && <MatchFlow inv={r.inv} onDone={() => setEditing(false)} />}
-      {editing && !r.inv && r.spec && (
-        <PartEditor
-          title="Edit part"
-          spec={r.spec}
-          color={item.color}
-          qty={item.qty}
-          saveLabel="Save"
-          onClose={() => setEditing(false)}
-          onSave={(spec, color, qty) => {
-            updateItem(step.id, item.id, { spec, color, qty });
-            setEditing(false);
-          }}
-        />
-      )}
     </div>
   );
 }

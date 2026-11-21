@@ -1,14 +1,31 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { legoColor, resolveColor } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { Color, ColorRef } from "../lib/types";
 
+/** When true, <Modal> renders as a docked side panel instead of an overlay. */
+export const InlineContext = createContext(false);
+
 export function Modal({ title, onClose, children, wide, footer }: { title: ReactNode; onClose: () => void; children: ReactNode; wide?: boolean; footer?: ReactNode }) {
+  const inline = useContext(InlineContext);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+  if (inline)
+    return (
+      <div className="panel">
+        <div className="modal-head">
+          <h2>{title}</h2>
+          <button className="icon" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div className="modal-body">{children}</div>
+        {footer && <div className="modal-foot">{footer}</div>}
+      </div>
+    );
   return (
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className={`modal ${wide ? "wide" : ""}`} role="dialog" aria-modal>

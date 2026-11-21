@@ -28,9 +28,15 @@ export function resolveItem(project: Project, item: StepItem): ResolvedItem {
     const m = project.matches[inv.partNum];
     if (m?.kind === "mb") spec = m.spec;
   }
+  // linked to a part that is no longer in the parts list (e.g. after re-importing): fall back to the part number
+  const lostPartNum = item.invKey && !inv ? item.invKey.split(":")[0] : undefined;
+  if (!spec && lostPartNum) {
+    const m = project.matches[lostPartNum];
+    if (m?.kind === "mb") spec = m.spec;
+  }
   const color = resolveColor(project, item.color);
-  const title = inv ? inv.name : spec ? specName(spec) : "Unknown part";
-  const subtitle = inv ? (spec ? `→ ${specName(spec)}` : "→ not matched") : undefined;
+  const title = inv ? inv.name : lostPartNum ? `LEGO #${lostPartNum}` : spec ? specName(spec) : "Unknown part";
+  const subtitle = inv ? (spec ? `→ ${specName(spec)}` : "→ not matched") : lostPartNum ? "not in the current parts list" : undefined;
   return { item, inv, spec, color, title, subtitle };
 }
 
