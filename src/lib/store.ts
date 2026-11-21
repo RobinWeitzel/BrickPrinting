@@ -208,7 +208,9 @@ export const useStore = create<State>((setState, getState) => {
         copy.splice(idx + 1, 0, step);
         return copy;
       });
-      setState({ selectedStepId: id });
+      // if the part picker is open, move it to the new step so parts go there
+      const panel = getState().panel;
+      setState({ selectedStepId: id, panel: panel ? { kind: "pick", stepId: id } : null });
       return id;
     },
     updateStep(id, patch) {
@@ -221,6 +223,9 @@ export const useStore = create<State>((setState, getState) => {
     },
     selectStep(id) {
       setState({ selectedStepId: id });
+      // clicking another step while adding parts switches the picker to that step
+      const panel = getState().panel;
+      if (id && panel && panel.stepId !== id) setState({ panel: { kind: "pick", stepId: id } });
       const st = getState().project?.steps.find((s) => s.id === id);
       if (st) setState({ page: st.page });
     },
