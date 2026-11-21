@@ -13,7 +13,7 @@ interface Props {
 
 export function Preview3D({ spec, color, height = 280 }: Props) {
   const host = useRef<HTMLDivElement>(null);
-  const ctx = useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; controls: OrbitControls; mesh?: THREE.Mesh; axes?: THREE.Object3D[] } | null>(null);
+  const ctx = useRef<{ renderer: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.PerspectiveCamera; controls: OrbitControls; mesh?: THREE.Mesh; axes?: THREE.Object3D[]; cutBoxes?: THREE.Object3D[]; partHeight?: number } | null>(null);
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
   const [error, setError] = useState("");
   const [dims, setDims] = useState<string>("");
@@ -58,6 +58,29 @@ export function Preview3D({ spec, color, height = 280 }: Props) {
     };
   }, []);
 
+  // red outlines where the cut-outs are, so it's visible even when a cut-out removes nothing
+  const cutKey = JSON.stringify(spec.cutouts ?? []);
+  const drawCutouts = () => {
+    const c = ctx.current;
+    if (!c) return;
+    c.cutBoxes?.forEach((b) => c.scene.remove(b));
+    c.cutBoxes = [];
+    const h = (c.partHeight ?? 10) + 2;
+    for (const cut of spec.cutouts ?? []) {
+      if (!(cut.w > 0 && cut.d > 0)) continue;
+      const geo = new THREE.BoxGeometry(cut.w * 8, cut.d * 8, h);
+      const box = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xe0453a, depthTest: false, transparent: true }));
+      const fill = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0xe0453a, transparent: true, opacity: 0.12, depthWrite: false }));
+      for (const o of [box, fill]) {
+        o.position.set(cut.x * 8 + (cut.w * 8) / 2, cut.y * 8 + (cut.d * 8) / 2, h / 2 - 1);
+        o.renderOrder = 9;
+        c.scene.add(o);
+        c.cutBoxes.push(o);
+      }
+    }
+  };
+  useEffect(drawCutouts, [cutKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // (re)load geometry when the spec changes
   const key = JSON.stringify(spec);
   useEffect(() => {
@@ -99,6 +122,8 @@ export function Preview3D({ spec, color, height = 280 }: Props) {
           const r = Math.max(m.max[0] - m.min[0], m.max[1] - m.min[1], m.max[2] - m.min[2]);
           c.controls.target.copy(center);
           c.camera.position.set(center.x + r * 1.1, center.y - r * 1.6, center.z + r * 1.2);
+          c.partHeight = m.max[2] - m.min[2];
+          drawCutouts();
           setDims(`${(m.max[0] - m.min[0]).toFixed(1)} × ${(m.max[1] - m.min[1]).toFixed(1)} × ${(m.max[2] - m.min[2]).toFixed(1)} mm`);
           setStatus("ok");
         })

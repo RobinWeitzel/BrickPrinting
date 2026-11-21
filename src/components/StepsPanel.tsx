@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { partsById } from "../lib/catalog";
 import { buildBom, resolveItem } from "../lib/model";
 import type { PdfDoc } from "../lib/pdf";
 import { useStore } from "../lib/store";
@@ -226,11 +225,10 @@ function Totals() {
       <table>
         <tbody>
           {bom.lines.map((l) => {
-            const p = partsById.get(l.spec.presetId);
             return (
               <tr key={l.key}>
                 <td className="num-cell">{l.qty}×</td>
-                <td>{p && <ColoredPart spec={l.spec} hex={l.color.hex} size={36} />}</td>
+                <td><ColoredPart spec={l.spec} hex={l.color.hex} size={36} /></td>
                 <td>
                   {l.name}
                   <div className="muted small">steps {l.steps.join(", ")}</div>

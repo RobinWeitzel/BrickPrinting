@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { AUTO_MATCH_SCORE, partsById, specName, suggestForLegoName } from "../lib/catalog";
+import { AUTO_MATCH_SCORE, specName, suggestForLegoName } from "../lib/catalog";
 import { usageByInvKey } from "../lib/model";
 import { DOWNLOADS_URL, RB_FILE_IDS, RB_FILES, importFiles, importedFiles, lookupSet, parseInventoryCsv, type RbFileId, type RbFileInfo, type SetLookupResult } from "../lib/rebrickable";
 import { useStore } from "../lib/store";
 import type { InventoryPart } from "../lib/types";
-import { PartThumb } from "./Library";
+import { SpecIcon } from "./Library";
 import { MatchFlow } from "./PartPicker";
 import { CustomColor, Modal, Swatch } from "./ui";
 
@@ -135,7 +135,6 @@ export function InventoryView({ onClose }: { onClose: () => void }) {
             <tbody>
               {rows.map((inv) => {
                 const m = project.matches[inv.partNum];
-                const mb = m?.kind === "mb" ? partsById.get(m.spec.presetId) : undefined;
                 const u = used.get(inv.key) ?? 0;
                 return (
                   <tr key={inv.key}>
@@ -154,7 +153,7 @@ export function InventoryView({ onClose }: { onClose: () => void }) {
                     <td className={`num-cell ${u >= inv.qty ? "ok" : ""}`}>{u}</td>
                     <td>
                       <button className={`match-btn ${m ? "" : "warn"}`} onClick={() => setMatching(inv)}>
-                        {mb && <PartThumb part={mb} size={32} />}
+                        {m?.kind === "mb" && <SpecIcon spec={m.spec} size={32} />}
                         <span>{m?.kind === "mb" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Choose part…"}</span>
                       </button>
                     </td>

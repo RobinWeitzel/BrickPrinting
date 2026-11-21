@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
-import { partsById, specKey, specName, suggestForLegoName, type CatalogPart, type Suggestion } from "../lib/catalog";
+import { useEffect, useMemo, useState } from "react";
+import { specKey, specName, suggestForLegoName, type Suggestion } from "../lib/catalog";
+import { findLDrawPart } from "../lib/ldraw";
 import { resolveItem, usageByInvKey } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, InventoryPart, PartSpec, Project } from "../lib/types";
-import { ColoredPart, LibraryBrowser, PartThumb } from "./Library";
+import { ColoredPart, LibraryBrowser, SpecIcon } from "./Library";
 import { PartEditor } from "./PartEditor";
 import { Modal, Swatch } from "./ui";
 
@@ -195,7 +196,7 @@ export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () =>
           </div>
         )
       ) : (
-        <LibraryBrowser onPick={(p) => setEditing({ presetId: p.id, overrides: {} })} />
+        <LibraryBrowser onPick={(id) => setEditing({ presetId: id, overrides: {} })} />
       )}
     </Modal>
   );
@@ -225,7 +226,6 @@ function InventoryPickList({ onAdd, onMatch }: { onAdd: (inv: InventoryPart) => 
         {list.map((inv) => {
           const u = used.get(inv.key) ?? 0;
           const m = project.matches[inv.partNum];
-          const mbPart = m?.kind === "mb" ? partsById.get(m.spec.presetId) : undefined;
           return (
             <div key={inv.key} className={`inv-card ${u >= inv.qty ? "done" : ""}`}>
               <button className="inv-main" onClick={() => onAdd(inv)} title="Add one to this step">
@@ -242,7 +242,7 @@ function InventoryPickList({ onAdd, onMatch }: { onAdd: (inv: InventoryPart) => 
                 </div>
               </button>
               <button className={`inv-match ${m ? "" : "warn"}`} onClick={() => onMatch(inv)} title="Choose the MachineBlocks part used to print this LEGO part">
-                {mbPart ? <PartThumb part={mbPart} size={28} /> : null}
+                {m?.kind === "mb" ? <SpecIcon spec={m.spec} size={28} /> : null}
                 <span className="small">{m?.kind === "mb" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Match…"}</span>
               </button>
             </div>
@@ -261,6 +261,13 @@ export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => v
   const existing = project.matches[inv.partNum];
   const [spec, setSpec] = useState<PartSpec | null>(existing?.kind === "mb" ? existing.spec : null);
   const suggestions = useMemo(() => suggestForLegoName(inv.name), [inv.name]);
+  const addLDrawPart = useStore((s) => s.addLDrawPart);
+  const [ldrawNum, setLdrawNum] = useState<string | null>(null);
+  const [ldrawBusy, setLdrawBusy] = useState(false);
+  const [ldrawError, setLdrawError] = useState("");
+  useEffect(() => {
+    findLDrawPart(inv.partNum).then(setLdrawNum, () => setLdrawNum(null));
+  }, [inv.partNum]);
 
   if (spec)
     return (
@@ -300,6 +307,28 @@ export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => v
             </button>
           )}
           <span className="spacer" />
+          {ldrawError && <span className="error small">{ldrawError}</span>}
+          {ldrawNum && (
+            <button
+              className="primary"
+              disabled={ldrawBusy}
+              onClick={async () => {
+                setLdrawBusy(true);
+                setLdrawError("");
+                try {
+                  const meta = await addLDrawPart(ldrawNum);
+                  setSpec({ presetId: meta.id, overrides: {} });
+                } catch (e) {
+                  setLdrawError(String((e as Error).message ?? e));
+                } finally {
+                  setLdrawBusy(false);
+                }
+              }}
+              title="Convert the official LDraw model of this part into a printable part"
+            >
+              {ldrawBusy ? "Converting…" : `Use LDraw model #${ldrawNum}`}
+            </button>
+          )}
           <button
             onClick={() => {
               setMatch(inv.partNum, { kind: "none" });
@@ -311,7 +340,7 @@ export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => v
         </>
       }
     >
-      <LibraryBrowser suggestions={suggestions} onPick={(p: CatalogPart, s?: Suggestion) => setSpec(s?.spec ?? { presetId: p.id, overrides: {} })} />
+      <LibraryBrowser suggestions={suggestions} onPick={(id: string, s?: Suggestion) => setSpec(s?.spec ?? { presetId: id, overrides: {} })} />
     </Modal>
   );
 }

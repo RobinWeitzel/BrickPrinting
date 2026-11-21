@@ -1,6 +1,7 @@
 import { createStore, get as idbGet, set as idbSet } from "idb-keyval";
 import type { RenderRequest, RenderResponse } from "../workers/openscad.worker";
 import { base, effectiveParams, partsById, scadUrl, specKey } from "./catalog";
+import { customStl, isCustom } from "./custom";
 import type { ParamValue, PartSpec } from "./types";
 
 const stlStore = createStore("brickprinting-stl", "stl");
@@ -61,6 +62,16 @@ export function renderStl(spec: PartSpec): Promise<ArrayBuffer> {
   let p = memCache.get(key);
   if (p) return p;
   p = (async () => {
+    if (isCustom(spec.presetId)) {
+      const stl = await customStl(spec.presetId);
+      const cuts = cutoutsMm(spec);
+      if (!cuts?.length) return stl;
+      const id = nextId++;
+      return new Promise<ArrayBuffer>((resolve, reject) => {
+        pending.set(id, { resolve, reject });
+        getWorker().postMessage({ id, presetId: spec.presetId, scadUrl: "", fsUrl: "", defines: [], cutouts: cuts, stl: stl.slice(0) } satisfies RenderRequest);
+      });
+    }
     const cached = await idbGet<ArrayBuffer>(key, stlStore).catch(() => undefined);
     if (cached) return cached;
     if (!partsById.has(spec.presetId)) throw new Error(`Unknown part ${spec.presetId}`);

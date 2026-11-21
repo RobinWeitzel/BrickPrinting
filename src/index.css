@@ -1147,6 +1147,47 @@ th {
   font-weight: 700;
 }
 
+.cat.mine {
+  font-weight: 600;
+}
+.custom-card {
+  padding: 0;
+  gap: 0;
+}
+.custom-pick {
+  border: none;
+  background: none;
+  flex-direction: column;
+  white-space: normal;
+  text-align: center;
+  font-size: 12px;
+  gap: 4px;
+  padding: 8px 6px 4px;
+  width: 100%;
+}
+.custom-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding-bottom: 6px;
+}
+.dropzone.small-drop {
+  flex: none;
+  margin: 0 0 12px;
+  min-height: 90px;
+}
+
+.ldraw-card {
+  margin-bottom: 12px;
+}
+.ldraw-card.drag {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ldraw-card p {
+  margin: 8px 0 0;
+}
+
 /* ---------- editor ---------- */
 .editor {
   display: flex;

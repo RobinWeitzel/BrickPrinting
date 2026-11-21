@@ -1,5 +1,6 @@
 import { del, get, set } from "idb-keyval";
 import { create } from "zustand";
+import { addCustomPart, addLDrawFiles, addLDrawLibraryPart, deleteCustomPart, listCustomParts, renameCustomPart, type CustomPartMeta } from "./custom";
 import type { Color, ColorRef, InventoryPart, Match, Project, ProjectSummary, Settings, Step, StepItem } from "./types";
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -13,6 +14,12 @@ export type SidePanel = { kind: "pick"; stepId: string } | { kind: "editItem"; s
 
 interface State {
   ready: boolean;
+  customParts: CustomPartMeta[];
+  uploadCustomParts(files: File[]): Promise<{ added: CustomPartMeta[]; errors: string[] }>;
+  removeCustomPart(id: string): Promise<void>;
+  renameCustomPart(id: string, name: string): Promise<void>;
+  refreshCustomParts(): Promise<void>;
+  addLDrawPart(partNum: string): Promise<CustomPartMeta>;
   panel: SidePanel | null;
   setPanel(p: SidePanel | null): void;
   settings: Settings;
@@ -79,6 +86,42 @@ export const useStore = create<State>((setState, getState) => {
 
   return {
     ready: false,
+    customParts: [],
+    async uploadCustomParts(files) {
+      const added: CustomPartMeta[] = [];
+      const errors: string[] = [];
+      const ld = files.filter((f) => /\.(dat|ldr)$/i.test(f.name));
+      if (ld.length) {
+        const r = await addLDrawFiles(ld);
+        added.push(...r.added);
+        errors.push(...r.errors);
+      }
+      for (const f of files.filter((f) => !/\.(dat|ldr)$/i.test(f.name))) {
+        try {
+          added.push(await addCustomPart(f));
+        } catch (e) {
+          errors.push(String((e as Error).message ?? e));
+        }
+      }
+      setState({ customParts: await listCustomParts() });
+      return { added, errors };
+    },
+    async removeCustomPart(id) {
+      await deleteCustomPart(id);
+      setState({ customParts: await listCustomParts() });
+    },
+    async renameCustomPart(id, name) {
+      await renameCustomPart(id, name);
+      setState({ customParts: await listCustomParts() });
+    },
+    async addLDrawPart(partNum) {
+      const meta = await addLDrawLibraryPart(partNum);
+      setState({ customParts: await listCustomParts() });
+      return meta;
+    },
+    async refreshCustomParts() {
+      setState({ customParts: await listCustomParts() });
+    },
     panel: null,
     setPanel(panel) {
       setState({ panel });
@@ -92,7 +135,8 @@ export const useStore = create<State>((setState, getState) => {
     selectedStepId: null,
 
     async init() {
-      const [settings, projects, lastId] = await Promise.all([get<Settings>("settings"), get<ProjectSummary[]>("projects"), get<string>("lastProject")]);
+      const [settings, projects, lastId, customParts] = await Promise.all([get<Settings>("settings"), get<ProjectSummary[]>("projects"), get<string>("lastProject"), listCustomParts().catch(() => [])]);
+      setState({ customParts });
       setState({ settings: { ...DEFAULT_SETTINGS, ...settings }, projects: projects ?? [], ready: true });
       if (lastId && projects?.some((p) => p.id === lastId)) await getState().openProject(lastId);
     },

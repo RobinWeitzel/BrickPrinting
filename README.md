@@ -14,6 +14,11 @@ A static web app (GitHub Pages) for rebuilding LEGO sets with 3D-printed
    Every part can be resized or fine-tuned using all of its MachineBlocks parameters.
 5. **Add parts to each step**, either from the set (shows what's left to place) or straight from the library. Set the color per part,
    or map LEGO colors to your filaments.
+   Parts MachineBlocks can't make (dishes, Technic pins, special plates, …) can come from **LDraw**:
+   import the official library ([complete.zip](https://library.ldraw.org/library/updates/complete.zip), ~150 MB)
+   once under **My parts** in the library. Then "Use LDraw model #…" converts a part by its number when you match it,
+   and you can also upload single `.dat` files. You can also upload your own STL files. Converted and uploaded
+   parts are stored in your browser and included in "Save backup".
 6. **Export:**
    - STL files per color
    - one 3MF per color, laid out on the plate
@@ -49,4 +54,5 @@ The workflow in `.github/workflows/deploy.yml` builds and publishes `dist/`.
   [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). This means non-commercial use only.
 - OpenSCAD WASM: GPL-2.0.
 - Set and part data: imported by the user from [Rebrickable's downloads](https://rebrickable.com/downloads/); part images load from Rebrickable's CDN. No Rebrickable data is stored in this repository.
+- LDraw parts library: imported by the user, [CC BY 4.0](https://library.ldraw.org); not stored in this repository.
 - LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this project.

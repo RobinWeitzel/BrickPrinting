@@ -1,4 +1,5 @@
 import catalogJson from "../data/catalog.json";
+import { customIndex, isCustom } from "./custom";
 import type { ParamValue, ParamValues, PartSpec } from "./types";
 
 export interface ParamSchema {
@@ -74,6 +75,10 @@ function fmtSize(size: ParamValue | undefined) {
 
 /** Human readable name of a spec, including size changes. */
 export function specName(spec: PartSpec): string {
+  if (isCustom(spec.presetId)) {
+    const name = customIndex.get(spec.presetId)?.name ?? "Missing custom part";
+    return spec.cutouts?.length ? `${name} (custom)` : name;
+  }
   const p = partsById.get(spec.presetId);
   if (!p) return spec.presetId;
   const changed = Object.keys(spec.overrides).filter((k) => JSON.stringify(spec.overrides[k]) !== JSON.stringify(p.defaults[k]));

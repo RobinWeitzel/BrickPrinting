@@ -9,6 +9,8 @@ export interface RenderRequest {
   defines: string[]; // ["size=[2,2,1]", ...]
   /** rectangles in mm [x, y, w, d] removed through the full height */
   cutouts?: [number, number, number, number][];
+  /** an existing binary STL (uploaded custom part): skip generation, only apply cut-outs */
+  stl?: ArrayBuffer;
 }
 
 export type RenderResponse =
@@ -32,6 +34,7 @@ function mkdirp(FS: { mkdir(p: string): void }, dir: string) {
 
 async function render(req: RenderRequest): Promise<RenderResponse> {
   const t0 = performance.now();
+  if (req.stl) return cutPass(req, new Uint8Array(req.stl), [], t0);
   libFiles ??= fetch(req.fsUrl).then((r) => {
     if (!r.ok) throw new Error(`Failed to load MachineBlocks library (${r.status})`);
     return r.json();
@@ -76,6 +79,10 @@ async function render(req: RenderRequest): Promise<RenderResponse> {
   } catch {
     return { id: req.id, ok: false, error: "OpenSCAD produced no output", log };
   }
+  return cutPass(req, out, log, t0);
+}
+
+async function cutPass(req: RenderRequest, out: Uint8Array, log: string[], t0: number): Promise<RenderResponse> {
   if (req.cutouts?.length) {
     // second pass: subtract the cut-outs from the finished part (works for every preset structure)
     const inst2 = await createOpenSCAD({ print: (s) => log.push(s), printErr: (s) => log.push(s) });

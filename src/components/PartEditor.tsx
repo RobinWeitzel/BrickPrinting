@@ -28,9 +28,11 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
   );
   const [qty, setQty] = useState(initialQty ?? 1);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const part = partsById.get(spec.presetId)!;
-  const schema = schemaOf(part);
-  const values = { ...part.defaults, ...spec.overrides };
+  const part = partsById.get(spec.presetId); // undefined for uploaded STL parts
+  const custom = useStore((s) => s.customParts.find((c) => c.id === spec.presetId));
+  const defaults = part?.defaults ?? {};
+  const schema = useMemo(() => (part ? schemaOf(part) : []), [part]);
+  const values = { ...defaults, ...spec.overrides };
 
   const sections = useMemo(() => {
     const m = new Map<string, ParamSchema[]>();
@@ -42,7 +44,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
   }, [schema]);
 
   const set = (name: string, v: ParamValue) => setSpec((s) => ({ ...s, overrides: { ...s.overrides, [name]: v } }));
-  const changed = Object.keys(spec.overrides).filter((k) => JSON.stringify(spec.overrides[k]) !== JSON.stringify(part.defaults[k]));
+  const changed = Object.keys(spec.overrides).filter((k) => JSON.stringify(spec.overrides[k]) !== JSON.stringify(defaults[k]));
 
   const size = values.size as number[] | undefined;
 
@@ -71,8 +73,9 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
           <Preview3D spec={spec} color={resolveColor(project, color).hex} height={320} />
           <div className="editor-base">
             <div>
-              <div className="muted small">{categoryName(part.category)}</div>
-              <strong>{part.name}</strong>
+              <div className="muted small">{part ? categoryName(part.category) : "My parts"}</div>
+              <strong>{part?.name ?? custom?.name ?? "Missing custom part"}</strong>
+              {custom && <div className="muted small">{custom.size.map((v) => v.toFixed(1)).join(" × ")} mm · {custom.fileName}</div>}
             </div>
             {onChangeBase && <button onClick={onChangeBase}>Change base part</button>}
           </div>
@@ -111,9 +114,11 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
               </div>
             </div>
           )}
+          {schema.length > 0 && (
           <button className="link" onClick={() => setShowAdvanced(!showAdvanced)}>
             {showAdvanced ? "▾" : "▸"} All parameters {changed.filter((c) => c !== "size").length > 0 && `(${changed.filter((c) => c !== "size").length} changed)`}
           </button>
+          )}
           {showAdvanced &&
             sections.map(([section, params]) => (
               <fieldset key={section}>
@@ -126,7 +131,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
           <CutoutEditor cutouts={spec.cutouts ?? []} size={size} onChange={(cutouts) => setSpec((s) => ({ ...s, cutouts }))} />
           {(changed.length > 0 || !!spec.cutouts?.length) && (
             <button className="link" onClick={() => setSpec({ presetId: spec.presetId, overrides: {} })}>
-              Reset to preset
+              {part ? "Reset to preset" : "Remove cut-outs"}
             </button>
           )}
         </div>
@@ -216,7 +221,8 @@ function CutoutEditor({ cutouts, size, onChange }: { cutouts: Cutout[]; size?: n
             <span className="axis-y">Y</span> along the second (see the arrows in the preview).
           </p>
           {cutouts.map((c, i) => (
-            <div key={i} className="cutout-row">
+            <div key={i}>
+            <div className="cutout-row">
               <label>
                 X <NumberInput value={c.x} step={0.5} min={-64} max={64} onChange={(x) => upd(i, { x })} />
               </label>
@@ -233,7 +239,14 @@ function CutoutEditor({ cutouts, size, onChange }: { cutouts: Cutout[]; size?: n
                 ✕
               </button>
             </div>
+            {size && (c.x >= size[0] || c.y >= size[1] || c.x + c.w <= 0 || c.y + c.d <= 0) && (
+              <div className="warn-text small">
+                This cut-out is outside the part ({size[0]} × {size[1]} studs), so it removes nothing. X can be 0 to {size[0] - 1}, Y 0 to {size[1] - 1}.
+              </div>
+            )}
+            </div>
           ))}
+          {cutouts.length > 0 && <p className="muted small">The red box in the preview shows where each cut-out is.</p>}
           <button onClick={() => onChange([...cutouts, { x: 0, y: Math.max(0, (size?.[1] ?? 2) - 1), w: 1, d: 1 }])}>+ Add cut-out</button>
         </fieldset>
       )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { catalog } from "./lib/catalog";
 import { download } from "./lib/export";
+import { exportCustomParts, importCustomParts, isCustom } from "./lib/custom";
 import { useStore } from "./lib/store";
 import type { Project } from "./lib/types";
 import { ExportDialog } from "./components/ExportDialog";
@@ -26,6 +27,7 @@ function Home() {
   const openProject = useStore((s) => s.openProject);
   const deleteProject = useStore((s) => s.deleteProject);
   const importProject = useStore((s) => s.importProject);
+  const refreshCustomParts = useStore((s) => s.refreshCustomParts);
   const [name, setName] = useState("");
 
   async function importJson(file: File | undefined) {
@@ -33,7 +35,12 @@ function Home() {
     try {
       const p = JSON.parse(await file.text()) as Project;
       if (!p.id || !Array.isArray(p.steps)) throw new Error("Not a BrickPrinting project file.");
-      await importProject(p);
+      const { customParts, ...proj } = p as Project & { customParts?: Parameters<typeof importCustomParts>[0] };
+      if (customParts?.length) {
+        await importCustomParts(customParts);
+        await refreshCustomParts();
+      }
+      await importProject(proj);
     } catch (e) {
       alert(String(e));
     }
@@ -120,7 +127,7 @@ function Workspace() {
         <button className="primary" onClick={() => setDialog("export")}>
           Export
         </button>
-        <button onClick={() => download(new Blob([JSON.stringify(project, null, 1)], { type: "application/json" }), `${project.name}.brickprinting.json`)} title="Download a backup of this project (without the PDF)">
+        <button onClick={() => saveBackup(project)} title="Download a backup of this project (without the PDF)">
           Save backup
         </button>
         <button className="icon" onClick={() => setDialog("settings")} title="Settings" aria-label="Settings">
@@ -136,4 +143,13 @@ function Workspace() {
       {dialog === "settings" && <SettingsDialog onClose={() => setDialog(null)} />}
     </div>
   );
+}
+
+/** Downloads the project as JSON, including the uploaded STL parts it uses (not the PDF). */
+async function saveBackup(project: Project) {
+  const ids = new Set<string>();
+  for (const m of Object.values(project.matches)) if (m.kind === "mb" && isCustom(m.spec.presetId)) ids.add(m.spec.presetId);
+  for (const s of project.steps) for (const i of s.items) if (i.spec && isCustom(i.spec.presetId)) ids.add(i.spec.presetId);
+  const customParts = ids.size ? await exportCustomParts([...ids]) : undefined;
+  download(new Blob([JSON.stringify({ ...project, customParts }, null, 1)], { type: "application/json" }), `${project.name}.brickprinting.json`);
 }
