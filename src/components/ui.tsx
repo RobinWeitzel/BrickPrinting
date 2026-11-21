@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { legoColor, resolveColor } from "../lib/model";
+import { legoColor, resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { Color, ColorRef } from "../lib/types";
 
@@ -64,13 +64,11 @@ export function ColorPicker({ value, onChange, legoColorId }: { value: ColorRef;
   const setColors = new Map<number, Color>();
   for (const i of project.inventory) if (!setColors.has(i.colorId)) setColors.set(i.colorId, { name: i.colorName, hex: i.colorHex });
 
-  const pushRecentColor = useStore((s) => s.pushRecentColor);
   const pick = (c: ColorRef) => {
     onChange(c);
-    pushRecentColor(c);
     setOpen(false);
   };
-  const recent = project.recentColors ?? [];
+  const recent = savedColors(project);
 
   return (
     <div className="color-picker" ref={ref}>
@@ -82,7 +80,7 @@ export function ColorPicker({ value, onChange, legoColorId }: { value: ColorRef;
         <div className="popover">
           {recent.length > 0 && (
             <>
-              <div className="popover-title">Recently used</div>
+              <div className="popover-title">Used in this build</div>
               <RecentSwatches value={value} onPick={pick} size={22} />
             </>
           )}
@@ -122,7 +120,7 @@ export function ColorPicker({ value, onChange, legoColorId }: { value: ColorRef;
 /** One-click swatches of the project's recently picked colors. */
 export function RecentSwatches({ value, onPick, size = 18 }: { value?: ColorRef; onPick: (c: ColorRef) => void; size?: number }) {
   const project = useStore((s) => s.project)!;
-  const recent = project.recentColors ?? [];
+  const recent = savedColors(project);
   const cur = value && JSON.stringify(value);
   return (
     <div className="swatch-grid">

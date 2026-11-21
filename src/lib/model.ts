@@ -108,3 +108,21 @@ export function buildBom(project: Project, opts: BomOptions): BomResult {
   const sorted = [...lines.values()].sort((a, b) => a.color.name.localeCompare(b.color.name) || a.name.localeCompare(b.name));
   return { lines: sorted, unmatched: [...unmatched.values()] };
 }
+
+/**
+ * Colors actually saved on parts in this build, most recently saved first.
+ * (Colors only tried out in a picker don't count.)
+ */
+export function savedColors(project: Project, max = 10): ColorRef[] {
+  const inUse = new Map<string, ColorRef>();
+  for (let i = project.steps.length - 1; i >= 0; i--) for (const it of [...project.steps[i].items].reverse()) inUse.set(JSON.stringify(it.color), it.color);
+  const out: ColorRef[] = [];
+  const seen = new Set<string>();
+  for (const c of [...(project.recentColors ?? []), ...inUse.values()]) {
+    const k = JSON.stringify(c);
+    if (seen.has(k) || !inUse.has(k)) continue;
+    seen.add(k);
+    out.push(c);
+  }
+  return out.slice(0, max);
+}

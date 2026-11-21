@@ -191,9 +191,11 @@ export const useStore = create<State>((setState, getState) => {
           return { ...x, items: [...x.items, { ...item, id: uid() }] };
         }),
       );
+      getState().pushRecentColor(item.color);
     },
     updateItem(stepId, itemId, patch) {
       updateSteps((s) => s.map((x) => (x.id === stepId ? { ...x, items: x.items.map((i) => (i.id === itemId ? { ...i, ...patch } : i)) } : x)));
+      if (patch.color) getState().pushRecentColor(patch.color);
     },
     removeItem(stepId, itemId) {
       updateSteps((s) => s.map((x) => (x.id === stepId ? { ...x, items: x.items.filter((i) => i.id !== itemId) } : x)));

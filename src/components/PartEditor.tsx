@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { categoryName, partsById, schemaOf, type ParamSchema } from "../lib/catalog";
-import { resolveColor } from "../lib/model";
+import { resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, ParamValue, PartSpec } from "../lib/types";
 import { Preview3D } from "./Preview3D";
@@ -22,10 +22,9 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
   const project = useStore((s) => s.project)!;
   const filaments = useStore((s) => s.settings.filaments);
   const [spec, setSpec] = useState(initial);
-  const pushRecentColor = useStore((s) => s.pushRecentColor);
   // new library parts start in the last color used
   const [color, setColor] = useState<ColorRef>(
-    initialColor ?? (legoColorId !== undefined ? { lego: legoColorId } : (project.recentColors?.[0] ?? { custom: filaments[0] ?? { name: "Light Bluish Gray", hex: "#A0A5A9" } })),
+    initialColor ?? (legoColorId !== undefined ? { lego: legoColorId } : (savedColors(project)[0] ?? { custom: filaments[0] ?? { name: "Light Bluish Gray", hex: "#A0A5A9" } })),
   );
   const [qty, setQty] = useState(initialQty ?? 1);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -85,10 +84,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
               <ColorPicker value={color} onChange={setColor} legoColorId={legoColorId} />
               <RecentSwatches
                 value={color}
-                onPick={(c) => {
-                  setColor(c);
-                  pushRecentColor(c);
-                }}
+                onPick={setColor}
               />
             </div>
           </div>
