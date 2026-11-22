@@ -1,0 +1,1455 @@
+{
+ "categories": [
+  {
+   "id": "bricks",
+   "name": "Bricks"
+  },
+  {
+   "id": "plates",
+   "name": "Plates"
+  },
+  {
+   "id": "tiles",
+   "name": "Tiles"
+  },
+  {
+   "id": "slopes",
+   "name": "Slopes"
+  },
+  {
+   "id": "wedges",
+   "name": "Wedges"
+  },
+  {
+   "id": "round",
+   "name": "Round"
+  },
+  {
+   "id": "corner",
+   "name": "Corner & T"
+  },
+  {
+   "id": "arches",
+   "name": "Arches"
+  },
+  {
+   "id": "slotted",
+   "name": "Bricks with slots"
+  },
+  {
+   "id": "wheels",
+   "name": "Wheels & axles"
+  },
+  {
+   "id": "hinges",
+   "name": "Hinges"
+  },
+  {
+   "id": "clips",
+   "name": "Clips"
+  },
+  {
+   "id": "calibration",
+   "name": "Calibration"
+  }
+ ],
+ "presets": [
+  {
+   "id": "bricks/brick-1x1",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x1",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-1x2",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x2",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-1x3",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x3",
+   "params": {
+    "size": [
+     3,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-1x4",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x4",
+   "params": {
+    "size": [
+     4,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-1x6",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x6",
+   "params": {
+    "size": [
+     6,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-1x8",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x8",
+   "params": {
+    "size": [
+     8,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-2x2",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-2x3",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 2x3",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-2x4",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 2x4",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-2x6",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 2x6",
+   "params": {
+    "size": [
+     6,
+     2
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-2x8",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 2x8",
+   "params": {
+    "size": [
+     8,
+     2
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "bricks/brick-1x2x2",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 1x2x2 (6 plates)",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 6
+   }
+  },
+  {
+   "id": "bricks/brick-2x4-hollow",
+   "category": "bricks",
+   "family": "block",
+   "name": "Brick 2x4 hollow",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 3,
+    "hollow": true
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "plates/plate-1x1",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 1x1",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-1x2",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 1x2",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-1x3",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 1x3",
+   "params": {
+    "size": [
+     3,
+     1
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-1x4",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 1x4",
+   "params": {
+    "size": [
+     4,
+     1
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-1x6",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 1x6",
+   "params": {
+    "size": [
+     6,
+     1
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-1x8",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 1x8",
+   "params": {
+    "size": [
+     8,
+     1
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-2x2",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 1
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "plates/plate-2x3",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 2x3",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-2x4",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 2x4",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-2x6",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 2x6",
+   "params": {
+    "size": [
+     6,
+     2
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-2x8",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 2x8",
+   "params": {
+    "size": [
+     8,
+     2
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-4x4",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 4x4",
+   "params": {
+    "size": [
+     4,
+     4
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-4x6",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 4x6",
+   "params": {
+    "size": [
+     6,
+     4
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-4x8",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 4x8",
+   "params": {
+    "size": [
+     8,
+     4
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-6x6",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 6x6",
+   "params": {
+    "size": [
+     6,
+     6
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "plates/plate-6x8",
+   "category": "plates",
+   "family": "block",
+   "name": "Plate 6x8",
+   "params": {
+    "size": [
+     8,
+     6
+    ],
+    "plates": 1
+   }
+  },
+  {
+   "id": "tiles/tile-1x1",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 1x1",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-1x2",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 1x2",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-1x3",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 1x3",
+   "params": {
+    "size": [
+     3,
+     1
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-1x4",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 1x4",
+   "params": {
+    "size": [
+     4,
+     1
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-1x6",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 1x6",
+   "params": {
+    "size": [
+     6,
+     1
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-1x8",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 1x8",
+   "params": {
+    "size": [
+     8,
+     1
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-2x2",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "tiles/tile-2x4",
+   "category": "tiles",
+   "family": "block",
+   "name": "Tile 2x4",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 1,
+    "tile": true
+   }
+  },
+  {
+   "id": "slopes/slope-45-2x1",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 45° 2x1",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 3,
+    "run": 1
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "slopes/slope-45-2x2",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 45° 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3,
+    "run": 1
+   }
+  },
+  {
+   "id": "slopes/slope-45-2x4",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 45° 2x4",
+   "params": {
+    "size": [
+     2,
+     4
+    ],
+    "plates": 3,
+    "run": 1
+   }
+  },
+  {
+   "id": "slopes/slope-33-3x1",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 33° 3x1",
+   "params": {
+    "size": [
+     3,
+     1
+    ],
+    "plates": 3,
+    "run": 2
+   }
+  },
+  {
+   "id": "slopes/slope-33-3x2",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 33° 3x2",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 3,
+    "run": 2
+   }
+  },
+  {
+   "id": "slopes/slope-cheese-1x1",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 1x1 (cheese)",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 2,
+    "run": 1
+   }
+  },
+  {
+   "id": "slopes/slope-30-1x2",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope 30° 1x2",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 2,
+    "run": 2
+   }
+  },
+  {
+   "id": "slopes/slope-inv-45-2x1",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope inverted 45° 2x1",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 3,
+    "run": 1,
+    "inverted": true
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "slopes/slope-inv-45-2x2",
+   "category": "slopes",
+   "family": "slope",
+   "name": "Slope inverted 45° 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3,
+    "run": 1,
+    "inverted": true
+   }
+  },
+  {
+   "id": "wedges/wedge-plate-3x2-right",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge plate 3x2 Right",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 1,
+    "side": "right"
+   }
+  },
+  {
+   "id": "wedges/wedge-plate-4x2-right",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge plate 4x2 Right",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 1,
+    "side": "right"
+   }
+  },
+  {
+   "id": "wedges/wedge-plate-6x3-right",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge plate 6x3 Right",
+   "params": {
+    "size": [
+     6,
+     3
+    ],
+    "plates": 1,
+    "side": "right",
+    "tip": 1
+   }
+  },
+  {
+   "id": "wedges/wedge-brick-3x2-right",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge brick 3x2 Right",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 3,
+    "side": "right"
+   }
+  },
+  {
+   "id": "wedges/wedge-plate-3x2-left",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge plate 3x2 Left",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 1,
+    "side": "left"
+   }
+  },
+  {
+   "id": "wedges/wedge-plate-4x2-left",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge plate 4x2 Left",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 1,
+    "side": "left"
+   }
+  },
+  {
+   "id": "wedges/wedge-plate-6x3-left",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge plate 6x3 Left",
+   "params": {
+    "size": [
+     6,
+     3
+    ],
+    "plates": 1,
+    "side": "left",
+    "tip": 1
+   }
+  },
+  {
+   "id": "wedges/wedge-brick-3x2-left",
+   "category": "wedges",
+   "family": "wedge",
+   "name": "Wedge brick 3x2 Left",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 3,
+    "side": "left"
+   }
+  },
+  {
+   "id": "round/round-plate-1x1",
+   "category": "round",
+   "family": "block",
+   "name": "Round plate 1x1",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 1,
+    "shape": "round"
+   }
+  },
+  {
+   "id": "round/round-brick-1x1",
+   "category": "round",
+   "family": "block",
+   "name": "Round brick 1x1",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 3,
+    "shape": "round"
+   }
+  },
+  {
+   "id": "round/round-plate-2x2",
+   "category": "round",
+   "family": "block",
+   "name": "Round plate 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 1,
+    "shape": "round"
+   }
+  },
+  {
+   "id": "round/round-brick-2x2",
+   "category": "round",
+   "family": "block",
+   "name": "Round brick 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3,
+    "shape": "round"
+   }
+  },
+  {
+   "id": "round/round-plate-4x4",
+   "category": "round",
+   "family": "block",
+   "name": "Round plate 4x4",
+   "params": {
+    "size": [
+     4,
+     4
+    ],
+    "plates": 1,
+    "shape": "round"
+   }
+  },
+  {
+   "id": "round/round-tile-1x1",
+   "category": "round",
+   "family": "block",
+   "name": "Round tile 1x1",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 1,
+    "shape": "round",
+    "tile": true
+   }
+  },
+  {
+   "id": "corner/corner-plate-2x2",
+   "category": "corner",
+   "family": "block",
+   "name": "Corner plate 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 1,
+    "mask": "XX/X."
+   }
+  },
+  {
+   "id": "corner/corner-brick-2x2",
+   "category": "corner",
+   "family": "block",
+   "name": "Corner brick 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3,
+    "mask": "XX/X."
+   }
+  },
+  {
+   "id": "corner/corner-tile-2x2",
+   "category": "corner",
+   "family": "block",
+   "name": "Corner tile 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 1,
+    "mask": "XX/X.",
+    "tile": true
+   }
+  },
+  {
+   "id": "corner/t-plate-3x2",
+   "category": "corner",
+   "family": "block",
+   "name": "T plate 3x2",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 1,
+    "mask": "XXX/.X."
+   }
+  },
+  {
+   "id": "corner/cross-plate-3x3",
+   "category": "corner",
+   "family": "block",
+   "name": "Cross plate 3x3",
+   "params": {
+    "size": [
+     3,
+     3
+    ],
+    "plates": 1,
+    "mask": ".X./XXX/.X."
+   }
+  },
+  {
+   "id": "arches/arch-1x3",
+   "category": "arches",
+   "family": "arch",
+   "name": "Arch 1x3",
+   "params": {
+    "size": [
+     3,
+     1
+    ],
+    "plates": 3
+   }
+  },
+  {
+   "id": "arches/arch-1x4",
+   "category": "arches",
+   "family": "arch",
+   "name": "Arch 1x4",
+   "params": {
+    "size": [
+     4,
+     1
+    ],
+    "plates": 3
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "arches/arch-1x6x2",
+   "category": "arches",
+   "family": "arch",
+   "name": "Arch 1x6x2",
+   "params": {
+    "size": [
+     6,
+     1
+    ],
+    "plates": 6
+   }
+  },
+  {
+   "id": "arches/arch-1x8x3",
+   "category": "arches",
+   "family": "arch",
+   "name": "Arch 1x8x3",
+   "params": {
+    "size": [
+     8,
+     1
+    ],
+    "plates": 9
+   }
+  },
+  {
+   "id": "slotted/brick-1x2-slots-ends",
+   "category": "slotted",
+   "family": "block",
+   "name": "Brick 1x2, slots in both ends",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 3,
+    "slots_x0": [
+     0
+    ],
+    "slots_x1": [
+     0
+    ]
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "slotted/brick-1x1-slot-front",
+   "category": "slotted",
+   "family": "block",
+   "name": "Brick 1x1, slot in front",
+   "params": {
+    "size": [
+     1,
+     1
+    ],
+    "plates": 3,
+    "slots_y0": [
+     0
+    ]
+   }
+  },
+  {
+   "id": "slotted/brick-1x2-slots-front",
+   "category": "slotted",
+   "family": "block",
+   "name": "Brick 1x2, slots in front",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 3,
+    "slots_y0": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "slotted/brick-1x4-slots-front",
+   "category": "slotted",
+   "family": "block",
+   "name": "Brick 1x4, slots in front",
+   "params": {
+    "size": [
+     4,
+     1
+    ],
+    "plates": 3,
+    "slots_y0": [
+     0,
+     1,
+     2,
+     3
+    ]
+   }
+  },
+  {
+   "id": "slotted/brick-1x2-upright-front",
+   "category": "slotted",
+   "family": "block",
+   "name": "Brick 1x2, upright slot in front",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 3,
+    "slots_y0": [
+     0
+    ],
+    "slot_orient": "upright"
+   },
+   "section": {
+    "axis": "x",
+    "at": 4
+   }
+  },
+  {
+   "id": "slotted/plate2-1x2-slots-ends",
+   "category": "slotted",
+   "family": "block",
+   "name": "Plate 1x2 (2 plates), slots in both ends",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 2,
+    "slots_x0": [
+     0
+    ],
+    "slots_x1": [
+     0
+    ]
+   }
+  },
+  {
+   "id": "slotted/brick-2x2-slots",
+   "category": "slotted",
+   "family": "block",
+   "name": "Brick 2x2, slots in two ends",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3,
+    "slots_x0": [
+     0,
+     1
+    ],
+    "slots_x1": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "wheels/axle-brick-2x2",
+   "category": "wheels",
+   "family": "axle_brick",
+   "name": "Axle brick 2x2",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 3,
+    "axle_x": [
+     1
+    ]
+   },
+   "section": {
+    "axis": "x",
+    "at": 8
+   }
+  },
+  {
+   "id": "wheels/axle-brick-4x2",
+   "category": "wheels",
+   "family": "axle_brick",
+   "name": "Axle brick 4x2 (two axles)",
+   "params": {
+    "size": [
+     4,
+     2
+    ],
+    "plates": 3,
+    "axle_x": [
+     1,
+     3
+    ]
+   }
+  },
+  {
+   "id": "wheels/axle-brick-1x2",
+   "category": "wheels",
+   "family": "axle_brick",
+   "name": "Axle brick 1x2",
+   "params": {
+    "size": [
+     1,
+     2
+    ],
+    "plates": 3,
+    "axle_x": [
+     0.5
+    ]
+   }
+  },
+  {
+   "id": "wheels/wheel-12",
+   "category": "wheels",
+   "family": "wheel",
+   "name": "Wheel Ø12",
+   "params": {
+    "d": 12,
+    "w": 6.4,
+    "tread": "grooves"
+   }
+  },
+  {
+   "id": "wheels/wheel-16",
+   "category": "wheels",
+   "family": "wheel",
+   "name": "Wheel Ø16",
+   "params": {
+    "d": 16,
+    "w": 6.4,
+    "tread": "grooves"
+   }
+  },
+  {
+   "id": "wheels/wheel-24-tire",
+   "category": "wheels",
+   "family": "wheel",
+   "name": "Wheel Ø24 for tyre",
+   "params": {
+    "d": 24,
+    "w": 8,
+    "tread": "tire"
+   },
+   "section": {
+    "axis": "y",
+    "at": 0
+   }
+  },
+  {
+   "id": "wheels/tire-24",
+   "category": "wheels",
+   "family": "tire",
+   "name": "Tyre for wheel Ø24 (TPU)",
+   "params": {
+    "d": 24,
+    "w": 8,
+    "t": 1.6
+   }
+  },
+  {
+   "id": "wheels/collar",
+   "category": "wheels",
+   "family": "collar",
+   "name": "Grip collar",
+   "params": {
+    "d": 8,
+    "h": 3.2
+   },
+   "section": {
+    "axis": "y",
+    "at": 0
+   }
+  },
+  {
+   "id": "wheels/axle-40",
+   "category": "wheels",
+   "family": "axle",
+   "name": "Printed axle 40 mm",
+   "params": {
+    "length": 40
+   }
+  },
+  {
+   "id": "wheels/axle-15",
+   "category": "wheels",
+   "family": "axle",
+   "name": "Printed axle 15.8 mm (2 wide)",
+   "params": {
+    "length": 15.8
+   }
+  },
+  {
+   "id": "hinges/hinge-2x2",
+   "category": "hinges",
+   "family": "hinge",
+   "name": "Hinge 2x2 (pair)",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 2,
+    "leaf": "pair"
+   }
+  },
+  {
+   "id": "hinges/hinge-2x1",
+   "category": "hinges",
+   "family": "hinge",
+   "name": "Hinge 2x1 (pair)",
+   "params": {
+    "size": [
+     2,
+     1
+    ],
+    "plates": 2,
+    "leaf": "pair"
+   }
+  },
+  {
+   "id": "hinges/hinge-2x2-a",
+   "category": "hinges",
+   "family": "hinge",
+   "name": "Hinge 2x2 leaf A",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 2,
+    "leaf": "a"
+   },
+   "section": {
+    "axis": "y",
+    "at": 4
+   }
+  },
+  {
+   "id": "hinges/hinge-2x2-b",
+   "category": "hinges",
+   "family": "hinge",
+   "name": "Hinge 2x2 leaf B",
+   "params": {
+    "size": [
+     2,
+     2
+    ],
+    "plates": 2,
+    "leaf": "b"
+   }
+  },
+  {
+   "id": "hinges/hinge-3x2-slots",
+   "category": "hinges",
+   "family": "hinge",
+   "name": "Hinge 3x2 with end slots (pair)",
+   "params": {
+    "size": [
+     3,
+     2
+    ],
+    "plates": 2,
+    "leaf": "pair",
+    "slots_x0": [
+     0,
+     1
+    ]
+   }
+  },
+  {
+   "id": "clips/clip",
+   "category": "clips",
+   "family": "clips",
+   "name": "Clip",
+   "params": {
+    "n": 1,
+    "cols": 1
+   }
+  },
+  {
+   "id": "clips/clip-sheet-10",
+   "category": "clips",
+   "family": "clips",
+   "name": "Clip sheet (10)",
+   "params": {
+    "n": 10,
+    "cols": 5
+   }
+  },
+  {
+   "id": "clips/clip-sheet-25",
+   "category": "clips",
+   "family": "clips",
+   "name": "Clip sheet (25)",
+   "params": {
+    "n": 25,
+    "cols": 5
+   }
+  },
+  {
+   "id": "calibration/coupon-rib-d",
+   "category": "calibration",
+   "family": "coupon",
+   "name": "Coupon: stud fit (socket ribs)",
+   "params": {
+    "param": "rib_d",
+    "center": -1,
+    "step": 0.05,
+    "labels": "dots"
+   }
+  },
+  {
+   "id": "calibration/coupon-slot-interf",
+   "category": "calibration",
+   "family": "coupon",
+   "name": "Coupon: clip fit (barb interference)",
+   "params": {
+    "param": "slot_interf",
+    "center": -1,
+    "step": 0.05,
+    "labels": "dots"
+   }
+  },
+  {
+   "id": "calibration/coupon-slot-clear",
+   "category": "calibration",
+   "family": "coupon",
+   "name": "Coupon: clip fit (slot thickness)",
+   "params": {
+    "param": "slot_clear",
+    "center": -1,
+    "step": 0.05,
+    "labels": "dots"
+   }
+  },
+  {
+   "id": "calibration/coupon-bore-spin",
+   "category": "calibration",
+   "family": "coupon",
+   "name": "Coupon: spinning bore",
+   "params": {
+    "param": "bore_spin",
+    "center": -1,
+    "step": 0.05,
+    "labels": "dots"
+   }
+  },
+  {
+   "id": "calibration/coupon-bore-grip",
+   "category": "calibration",
+   "family": "coupon",
+   "name": "Coupon: grip bore",
+   "params": {
+    "param": "bore_grip",
+    "center": -1,
+    "step": 0.05,
+    "labels": "dots"
+   }
+  }
+ ]
+}

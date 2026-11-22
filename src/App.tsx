@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { catalog } from "./lib/catalog";
 import { download } from "./lib/export";
-import { exportCustomParts, importCustomParts, isCustom } from "./lib/custom";
 import { useStore } from "./lib/store";
 import type { Project } from "./lib/types";
 import { ExportDialog } from "./components/ExportDialog";
@@ -33,7 +32,6 @@ function Home() {
   const openProject = useStore((s) => s.openProject);
   const deleteProject = useStore((s) => s.deleteProject);
   const importProject = useStore((s) => s.importProject);
-  const refreshCustomParts = useStore((s) => s.refreshCustomParts);
   const [name, setName] = useState("");
 
   async function importJson(file: File | undefined) {
@@ -41,11 +39,8 @@ function Home() {
     try {
       const p = JSON.parse(await file.text()) as Project;
       if (!p.id || !Array.isArray(p.steps)) throw new Error("Not a BrickPrinting project file.");
-      const { customParts, ...proj } = p as Project & { customParts?: Parameters<typeof importCustomParts>[0] };
-      if (customParts?.length) {
-        await importCustomParts(customParts);
-        await refreshCustomParts();
-      }
+      // backups from older versions may carry uploaded parts; those are no longer supported
+      const { customParts: _dropped, ...proj } = p as Project & { customParts?: unknown };
       await importProject(proj);
     } catch (e) {
       alert(String(e));
@@ -56,7 +51,7 @@ function Home() {
     <div className="home">
       <header className="home-head">
         <h1>🧱 BrickPrinting</h1>
-        <p className="muted">Turn LEGO building instructions into a list of 3D-printable MachineBlocks parts, step by step.</p>
+        <p className="muted">Turn LEGO building instructions into a list of 3D-printable parts, step by step. The parts are designed for FDM printing: studs and crush-rib sockets, clips and slots for sideways connections.</p>
       </header>
       <section className="card">
         <h3>New project</h3>
@@ -98,11 +93,7 @@ function Home() {
         </section>
       )}
       <footer className="muted small">
-        Parts from{" "}
-        <a href={catalog.source} target="_blank" rel="noreferrer">
-          MachineBlocks
-        </a>{" "}
-        by Jan Philipp Knoeller (CC BY-NC-SA 4.0, rev {catalog.revision}). Set parts lists come from Rebrickable downloads that you import yourself. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this tool. Everything is stored locally in your browser.
+        Part library rev {catalog.revision} (OpenSCAD source in <code>scad/</code>). Set parts lists come from Rebrickable downloads that you import yourself. LEGO® is a trademark of the LEGO Group, which does not sponsor or endorse this tool. The printed parts are not LEGO compatible. Everything is stored locally in your browser.
       </footer>
     </div>
   );
@@ -151,11 +142,7 @@ function Workspace() {
   );
 }
 
-/** Downloads the project as JSON, including the uploaded STL parts it uses (not the PDF). */
-async function saveBackup(project: Project) {
-  const ids = new Set<string>();
-  for (const m of Object.values(project.matches)) if (m.kind === "mb" && isCustom(m.spec.presetId)) ids.add(m.spec.presetId);
-  for (const s of project.steps) for (const i of s.items) if (i.spec && isCustom(i.spec.presetId)) ids.add(i.spec.presetId);
-  const customParts = ids.size ? await exportCustomParts([...ids]) : undefined;
-  download(new Blob([JSON.stringify({ ...project, customParts }, null, 1)], { type: "application/json" }), `${project.name}.brickprinting.json`);
+/** Downloads the project as JSON (without the PDF). */
+function saveBackup(project: Project) {
+  download(new Blob([JSON.stringify(project, null, 1)], { type: "application/json" }), `${project.name}.brickprinting.json`);
 }

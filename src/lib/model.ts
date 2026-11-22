@@ -1,4 +1,4 @@
-import { specKey, specName } from "./catalog";
+import { effectiveParams, partsById, specKey, specName } from "./catalog";
 import type { Color, ColorRef, InventoryPart, PartSpec, Project, StepItem } from "./types";
 
 export function legoColor(project: Project, colorId: number): Color {
@@ -26,14 +26,16 @@ export function resolveItem(project: Project, item: StepItem): ResolvedItem {
   let spec = item.spec;
   if (!spec && inv) {
     const m = project.matches[inv.partNum];
-    if (m?.kind === "mb") spec = m.spec;
+    if (m?.kind === "part") spec = m.spec;
   }
   // linked to a part that is no longer in the parts list (e.g. after re-importing): fall back to the part number
   const lostPartNum = item.invKey && !inv ? item.invKey.split(":")[0] : undefined;
   if (!spec && lostPartNum) {
     const m = project.matches[lostPartNum];
-    if (m?.kind === "mb") spec = m.spec;
+    if (m?.kind === "part") spec = m.spec;
   }
+  // a part that is no longer in the library counts as unmatched
+  if (spec && !partsById.has(spec.presetId)) spec = undefined;
   const color = resolveColor(project, item.color);
   const title = inv ? inv.name : lostPartNum ? `LEGO #${lostPartNum}` : spec ? specName(spec) : "Unknown part";
   const subtitle = inv ? (spec ? `→ ${specName(spec)}` : "→ not matched") : lostPartNum ? "not in the current parts list" : undefined;
@@ -102,7 +104,7 @@ export function buildBom(project: Project, opts: BomOptions): BomResult {
       if (inv.isSpare && !opts.includeSpares) continue;
       const rest = inv.qty - (used.get(inv.key) ?? 0);
       const m = project.matches[inv.partNum];
-      add(m?.kind === "mb" ? m.spec : undefined, resolveColor(project, { lego: inv.colorId }), rest, inv.name, inv.isSpare ? "spare" : "unplaced", inv.partNum);
+      add(m?.kind === "part" ? m.spec : undefined, resolveColor(project, { lego: inv.colorId }), rest, inv.name, inv.isSpare ? "spare" : "unplaced", inv.partNum);
     }
   }
   const sorted = [...lines.values()].sort((a, b) => a.color.name.localeCompare(b.color.name) || a.name.localeCompare(b.name));
@@ -125,4 +127,27 @@ export function savedColors(project: Project, max = 10): ColorRef[] {
     out.push(c);
   }
   return out.slice(0, max);
+}
+
+/**
+ * Connectors a BOM needs besides its printed parts: clips for side/top slots, and Ø3 axles
+ * for axle bricks (one per bore, as long as the brick is wide) and hinges (one pin per pair).
+ */
+export function hardwareFor(bom: BomResult): { slots: number; axles: { length: number; qty: number }[] } {
+  let slots = 0;
+  const axles = new Map<number, number>();
+  const addAxle = (len: number, qty: number) => axles.set(len, (axles.get(len) ?? 0) + qty);
+  for (const l of bom.lines) {
+    const part = partsById.get(l.spec.presetId);
+    if (!part) continue;
+    const v = effectiveParams(l.spec);
+    const n = (k: string) => (Array.isArray(v[k]) ? (v[k] as unknown[]).length : 0);
+    const tall = Number(v.plates ?? 0) >= 2;
+    if (part.family === "block" && tall) slots += l.qty * (n("slots_x0") + n("slots_x1") + n("slots_y0") + n("slots_y1"));
+    if (part.family === "hinge") slots += l.qty * n("slots_x0") * (v.leaf === "pair" || v.leaf === "assembled" ? 2 : 1);
+    const width = Array.isArray(v.size) ? Number((v.size as number[])[1]) * 8 - 0.2 : 0;
+    if (part.family === "axle_brick") addAxle(Math.round(width * 10) / 10, l.qty * n("axle_x"));
+    if (part.family === "hinge" && v.leaf !== "b") addAxle(Math.round(width * 10) / 10, l.qty);
+  }
+  return { slots, axles: [...axles].map(([length, qty]) => ({ length, qty })) };
 }

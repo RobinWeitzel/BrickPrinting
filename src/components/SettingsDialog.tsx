@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { BAMBU_COLORS_SOURCE, CLEAR_HEX, bambuFilamentName, loadBambuColors, materialsOf, type BambuColor } from "../lib/bambu";
+import { FIT_PARAMS } from "../lib/render";
 import { useStore } from "../lib/store";
 import type { Color } from "../lib/types";
-import { CustomColor, Modal, Swatch } from "./ui";
+import { CustomColor, Modal, NumberInput, Swatch } from "./ui";
 
 const same = (a: Color, b: Color) => a.name === b.name && a.hex.toLowerCase() === b.hex.toLowerCase();
 
@@ -41,7 +42,39 @@ export function SettingsDialog({ onClose }: { onClose: () => void }) {
         )}
       </section>
       <BambuPicker />
+      <FitSettings />
     </Modal>
+  );
+}
+
+/** Fit values of the connectors (scad/config.scad), tuned with the calibration coupons. */
+function FitSettings() {
+  const fit = useStore((s) => s.settings.fit) ?? {};
+  const updateSettings = useStore((s) => s.updateSettings);
+  const changed = FIT_PARAMS.some((p) => fit[p.name] !== undefined && fit[p.name] !== p.default);
+  return (
+    <section className="card">
+      <h3>Fit (calibration)</h3>
+      <p className="muted small">
+        Print a coupon from <em>Calibration</em> in the part library: it has the same connector in 5 steps around the current value (1 dot = 2 steps smaller, 5 dots = 2 steps larger). Enter the value
+        of the best one here. Every part is regenerated with the new values.
+      </p>
+      <div className="fit-grid">
+        {FIT_PARAMS.map((p) => (
+          <label key={p.name} className="param">
+            <span title={`${p.name} in scad/config.scad. ${p.hint}`}>
+              {p.label} <span className="muted small">({p.hint})</span>
+            </span>
+            <NumberInput min={0} max={10} step={p.step} value={fit[p.name] ?? p.default} onChange={(v) => updateSettings({ fit: { ...fit, [p.name]: v } })} />
+          </label>
+        ))}
+      </div>
+      {changed && (
+        <button className="link small" onClick={() => updateSettings({ fit: {} })}>
+          Reset to the tested values (SPEC.md)
+        </button>
+      )}
+    </section>
   );
 }
 

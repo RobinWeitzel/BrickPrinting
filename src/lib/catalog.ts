@@ -1,6 +1,11 @@
 import catalogJson from "../data/catalog.json";
-import { customIndex, isCustom } from "./custom";
 import type { ParamValue, ParamValues, PartSpec } from "./types";
+
+/**
+ * The part catalog, generated from the OpenSCAD library in scad/ by scripts/build-library.mjs.
+ * A part family is one parametric generator (scad/families/<family>.scad); a preset is a named
+ * parameter set of a family (the base set, scad/library.json). A part spec is a preset plus overrides.
+ */
 
 export interface ParamSchema {
   name: string;
@@ -12,40 +17,42 @@ export interface ParamSchema {
   options?: { value: string | number; label: string }[];
 }
 
+export interface Family {
+  description: string;
+  schema: ParamSchema[];
+  /** defaults of the family file itself (what OpenSCAD uses without -D) */
+  defaults: ParamValues;
+}
+
 export interface CatalogPart {
   id: string;
   category: string;
   name: string;
-  size?: number[];
-  thumb: boolean;
-  schema: string;
+  family: string;
+  /** full parameter set of this preset */
   defaults: ParamValues;
-  preset?: ParamValues;
 }
 
 interface CatalogData {
-  source: string;
   revision: string;
   categories: { id: string; name: string }[];
-  schemas: Record<string, ParamSchema[]>;
+  families: Record<string, Family>;
   parts: CatalogPart[];
 }
 
 export const catalog = catalogJson as unknown as CatalogData;
-// natural order within each category: "Brick 1x1, Brick 2x1, … Brick 12x1" instead of "Brick 12x1, Brick 1x1"
-{
-  const catIdx = new Map(catalog.categories.map((c, i) => [c.id, i]));
-  catalog.parts.sort((a, b) => catIdx.get(a.category)! - catIdx.get(b.category)! || a.name.localeCompare(b.name, undefined, { numeric: true }));
-}
 export const partsById = new Map(catalog.parts.map((p) => [p.id, p]));
 export const categoryName = (id: string) => catalog.categories.find((c) => c.id === id)?.name ?? id;
 
 export const base = import.meta.env.BASE_URL;
-export const thumbUrl = (p: CatalogPart) => (p.thumb ? `${base}machineblocks/examples/${p.id}.webp` : undefined);
-export const scadUrl = (presetId: string) => `${base}machineblocks/examples/${presetId}.scad`;
+export const thumbUrl = (p: CatalogPart) => `${base}library/thumbs/${p.id}.png`;
+
+export function familyOf(p: CatalogPart): Family {
+  return catalog.families[p.family];
+}
 
 export function schemaOf(p: CatalogPart): ParamSchema[] {
-  return catalog.schemas[p.schema] ?? [];
+  return familyOf(p)?.schema ?? [];
 }
 
 export function effectiveParams(spec: PartSpec): ParamValues {
@@ -66,30 +73,32 @@ export function specKey(spec: PartSpec): string {
   return `${catalog.revision}|${spec.presetId}|${JSON.stringify(ov)}${cuts}`;
 }
 
-function fmtSize(size: ParamValue | undefined) {
-  if (!Array.isArray(size)) return "";
-  const [x, y, z] = size as number[];
-  const h = z === 1 ? "" : z === 3 ? "" : ` h${z}`;
-  return `${x}x${y}${h}`;
+function fmtSize(v: ParamValues) {
+  const s = v.size;
+  if (!Array.isArray(s)) return "";
+  const [x, y] = s as number[];
+  const plates = Number(v.plates);
+  const h = !plates || plates === 1 || plates === 3 ? "" : ` × ${plates} plates`;
+  return `${Math.min(x, y)}x${Math.max(x, y)}${h}`;
 }
 
 /** Human readable name of a spec, including size changes. */
 export function specName(spec: PartSpec): string {
-  if (isCustom(spec.presetId)) {
-    const name = customIndex.get(spec.presetId)?.name ?? "Missing custom part";
-    return spec.cutouts?.length ? `${name} (custom)` : name;
-  }
   const p = partsById.get(spec.presetId);
-  if (!p) return spec.presetId;
+  if (!p) return `Missing part (${spec.presetId})`;
   const changed = Object.keys(spec.overrides).filter((k) => JSON.stringify(spec.overrides[k]) !== JSON.stringify(p.defaults[k]));
   if (spec.cutouts?.length) return `${p.name} (custom)`;
   if (changed.length === 0) return p.name;
-  if (changed.length === 1 && changed[0] === "size") return `${p.name} → ${fmtSize(spec.overrides.size)}`;
+  if (changed.every((k) => k === "size" || k === "plates")) {
+    // "Brick 1x2" resized to 1x6 -> "Brick 1x6"
+    const renamed = p.name.replace(/\d+x\d+(x\d+)?/, fmtSize({ ...p.defaults, ...spec.overrides }));
+    if (renamed !== p.name) return renamed;
+  }
   return `${p.name} (custom)`;
 }
 
 // ---------------------------------------------------------------------------
-// Search & LEGO name matching
+// Search
 // ---------------------------------------------------------------------------
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
@@ -100,105 +109,129 @@ export function searchParts(query: string, category?: string): CatalogPart[] {
   return catalog.parts.filter((p) => {
     if (category && p.category !== category) return false;
     if (!words.length) return true;
-    const hay = norm(`${p.name} ${categoryName(p.category)}`);
+    const hay = norm(`${p.name} ${categoryName(p.category)} ${p.family}`);
     return words.every((w) => {
       const dims = w.match(/^(\d+)x(\d+)$/);
-      if (dims && p.size) {
+      const size = p.defaults.size as number[] | undefined;
+      if (dims && Array.isArray(size)) {
         const [a, b] = [Number(dims[1]), Number(dims[2])];
-        return (p.size[0] === a && p.size[1] === b) || (p.size[0] === b && p.size[1] === a);
+        return (size[0] === a && size[1] === b) || (size[0] === b && size[1] === a);
       }
       return hay.includes(w);
     });
   });
 }
 
+// ---------------------------------------------------------------------------
+// LEGO name -> part
+// ---------------------------------------------------------------------------
+
 export interface Suggestion {
   part: CatalogPart;
   score: number;
-  /** size override needed when the preset is the right type but different dimension order */
+  /** the preset, possibly with overrides (e.g. resized) */
   spec: PartSpec;
 }
 
-/** Suggest MachineBlocks parts for a Rebrickable/LEGO part name like "Plate 2 x 6" or "Slope 45° 2 x 1". */
+/** Families whose size and height can be changed freely to match any LEGO size. */
+const RESIZABLE = new Set(["block", "slope", "wedge", "arch", "axle_brick", "hinge"]);
+
+/** Height of a LEGO part in plates from its name: "1 x 2 x 2" -> 6, "x 2/3" -> 2, "x 1 1/3" -> 4. */
+function legoHeightPlates(h: string | undefined): number | undefined {
+  if (!h) return undefined;
+  const m = h.trim().match(/^(\d+)?(?:\s*(\d)\/(\d))?$/);
+  if (!m) return undefined;
+  const bricks = Number(m[1] ?? 0) + (m[2] ? Number(m[2]) / Number(m[3]) : 0);
+  return bricks ? Math.round(bricks * 3) : undefined;
+}
+
+/**
+ * Suggest parts for a Rebrickable/LEGO part name like "Plate 2 x 6", "Slope 45° 2 x 1" or
+ * "Brick 1 x 2 x 2". The best suggestion is a preset, resized when the family allows it.
+ */
 export function suggestForLegoName(legoName: string): Suggestion[] {
   const name = legoName.toLowerCase();
-  const dimM = name.match(/(\d+)\s*x\s*(\d+)(?:\s*x\s*(\d+(?:\s*\d\/\d)?))?/);
+  const dimM = name.match(/(\d+)\s*x\s*(\d+)(?:\s*x\s*(\d\/\d|\d+(?:\s+\d\/\d)?))?/);
+  // wheels and tyres: "Wheel 11mm D. x 6mm", "Tire 14mm D. x 4mm"
+  const mmM = name.match(/(\d+(?:\.\d+)?)\s*mm\s*d\.?(?:\s*x\s*(\d+(?:\.\d+)?)\s*mm)?/);
   const dims = dimM ? [Number(dimM[1]), Number(dimM[2])] : undefined;
-  const heightBricks = dimM?.[3] ? parseFloat(dimM[3]) : undefined;
+  const heightPlates = legoHeightPlates(dimM?.[3]);
 
+  // which categories fit this LEGO part
   let cats: string[] = [];
-  let kind = "";
-  if (/corner|\bcross\b/.test(name) && /(plate|brick|tile)/.test(name) && !/round|wedge|cut/.test(name)) (cats = ["corner"]), (kind = /tile/.test(name) ? "tile" : /plate/.test(name) ? "plate" : "brick");
-  else if (/wedge/.test(name) && /plate/.test(name)) (cats = ["wedges"]), (kind = "wedge plate");
-  else if (/wedge/.test(name)) (cats = ["wedges", "slopes"]), (kind = "wedge");
-  else if (/slope/.test(name)) (cats = ["slopes"]), (kind = "slope");
-  else if (/technic/.test(name) && /brick/.test(name)) (cats = ["technic-bricks"]), (kind = "technic brick");
-  else if (/technic/.test(name) && /plate/.test(name)) (cats = ["technic-plates"]), (kind = "technic plate");
-  else if (/technic/.test(name) && /(beam|liftarm)/.test(name)) (cats = ["technic-liftarms"]), (kind = "liftarm");
-  else if (/round|dish|cylinder/.test(name)) (cats = ["round"]), (kind = "round");
-  else if (/arch/.test(name)) (cats = ["arches"]), (kind = "arch");
-  else if (/bracket/.test(name)) (cats = ["brackets"]), (kind = "bracket");
-  else if (/panel/.test(name)) (cats = ["panels"]), (kind = "panel");
-  else if (/tile/.test(name)) (cats = ["tiles"]), (kind = "tile");
-  else if (/plate/.test(name)) (cats = ["plates"]), (kind = "plate");
-  else if (/brick/.test(name)) (cats = ["bricks"]), (kind = "brick");
+  if (/\btire\b|\btyre\b/.test(name)) cats = ["wheels"];
+  else if (/\bwheel\b|\bhub\b/.test(name)) cats = ["wheels"];
+  else if (/\baxle\b/.test(name) && !/brick|plate/.test(name)) cats = ["wheels"];
+  else if (/hinge/.test(name)) cats = ["hinges"];
+  else if (/slope|roof/.test(name)) cats = ["slopes"];
+  else if (/wedge/.test(name)) cats = ["wedges", "slopes"];
+  else if (/round|cylinder|dish/.test(name)) cats = ["round"];
+  else if (/arch/.test(name)) cats = ["arches"];
+  else if (/corner|\bcross\b|\bt\b/.test(name) && /(plate|brick|tile)/.test(name)) cats = ["corner"];
+  else if (/technic/.test(name) && /(brick|plate)/.test(name) && /hole|axle/.test(name)) cats = ["wheels"];
+  else if (/(with|w\/).*(clip|bar|handle|stud on side|studs on side|side)/.test(name)) cats = ["slotted"];
+  else if (/tile/.test(name)) cats = ["tiles"];
+  else if (/plate/.test(name)) cats = ["plates"];
+  else if (/brick/.test(name)) cats = ["bricks"];
+  if (!cats.length) return [];
 
-  const slopeAngle = name.match(/(\d+)\s*°/)?.[1];
+  const angle = name.match(/(\d+)\s*°/)?.[1];
   const side = /\bleft\b/.test(name) ? "left" : /\bright\b/.test(name) ? "right" : undefined;
-  const isSpecial = /(with|special|modified|hinge|clip|bar|pin|hole|groove|stud|inverted|curved|corner|cross)/.test(name);
-  // a concrete feature word the matching preset should also mention
-  const specialWord = name.match(/(hinge|clip|bar|pin|hole|inverted|curved|corner|cross|dome)/)?.[1];
+  const inverted = /inverted/.test(name);
+  const special = /(with|modified|special)/.test(name);
 
   const out: Suggestion[] = [];
   for (const p of catalog.parts) {
-    if (cats.length && !cats.includes(p.category)) continue;
-    if (!cats.length) continue;
+    if (!cats.includes(p.category)) continue;
     const pn = p.name.toLowerCase();
-    let score = 10 - cats.indexOf(p.category) * 3;
-    if (kind && pn.includes(kind.split(" ").pop()!)) score += 3;
-    if (p.category === "corner" && /corner/.test(name) !== /corner/.test(pn)) score -= 4;
-    if (kind === "plate" && pn.startsWith("centered")) score -= 4;
-    if (kind === "round" && /plate/.test(name) !== /plate/.test(pn)) score -= 3;
-    if (kind === "round" && /tile/.test(name) !== /tile/.test(pn)) score -= 2;
-    if (slopeAngle) score += pn.includes(` ${slopeAngle} `) || pn.includes(` ${slopeAngle}°`) ? 4 : -2;
-    if (/inverted/.test(name) === /inverted/.test(pn)) score += 1;
-    else score -= 3;
+    const d = p.defaults;
+    let score = 12 - cats.indexOf(p.category) * 3;
+    if (special) score -= 6; // "Plate 1 x 2 with Clip": only an approximation, never auto-matched
+    if (/tile/.test(name) !== /tile/.test(pn) && p.category !== "tiles") score -= 2;
+    if (/plate/.test(name) && /brick/.test(pn)) score -= 2;
+    if (/brick/.test(name) && /\bplate\b/.test(pn) && p.category !== "plates") score -= 2;
+    if (angle) score += pn.includes(`${angle}°`) ? 4 : -5;
+    if (inverted !== /inverted/.test(pn)) score -= 4;
     if (side) score += pn.includes(side) ? 3 : -5;
-    if (!isSpecial && /with|open|corner|rounded/.test(pn)) score -= 2;
-    // a special LEGO part ("... with Door Rail") is never an obvious match for a plain preset
-    if (specialWord && !pn.includes(specialWord)) score -= 3;
-    else if (!specialWord && /special|modified/.test(name)) score -= 3;
-    if (/round corner/.test(name) && /qtr|quarter/.test(pn)) score += 6;
-    // penalize features of the MachineBlocks part the LEGO part doesn't mention
-    for (const w of ["jumper", "axle", "hole", "pin", "open", "double", "rounded", "grille", "studs"]) if (pn.includes(w) && !name.includes(w)) score -= 2;
+    if (p.category === "wheels") {
+      const want = /tire|tyre/.test(name) ? "tyre" : /wheel|hub/.test(name) ? "wheel" : /brick|plate/.test(name) ? "axle brick" : /axle/.test(name) ? "printed axle" : "axle brick";
+      score += pn.startsWith(want) ? 4 : -4;
+    }
 
     let spec: PartSpec = { presetId: p.id, overrides: {} };
-    if (dims && p.size) {
+    const size = d.size as number[] | undefined;
+    if (dims && Array.isArray(size)) {
       const [a, b] = dims;
-      const [x, y, z] = p.size;
-      const exact = (x === a && y === b) || (x === b && y === a);
-      if (exact) score += 8;
-      else if (["bricks", "plates", "tiles"].includes(p.category) && !isSpecial) {
-        // same family but other size: offer resized preset
-        score += 1;
-        spec = { presetId: p.id, overrides: { size: [Math.max(a, b), Math.min(a, b), z] } };
-      } else score -= 6;
-      if (heightBricks && p.category === "bricks") {
-        const wantZ = Math.round(heightBricks * 3);
-        if (z === wantZ) score += 3;
-        else if (exact) {
-          spec = { presetId: p.id, overrides: { size: [x, y, wantZ] } };
-        }
-      } else if (!heightBricks && p.category === "bricks" && z !== 3) score -= 3;
+      const exact = (size[0] === a && size[1] === b) || (size[0] === b && size[1] === a);
+      const wantPlates = p.category === "slotted" ? undefined : heightPlates ?? (p.family === "block" ? (/plate|tile/.test(name) ? 1 : /brick/.test(name) ? 3 : undefined) : undefined);
+      const platesOk = wantPlates === undefined || d.plates === undefined || d.plates === wantPlates;
+      // LEGO slopes/wedges name the length along the slope first: "Slope 45° 2 x 1"
+      const ordered = p.family === "slope" || p.family === "wedge";
+      if (exact) score += platesOk ? 11 : 9;
+      if (RESIZABLE.has(p.family) && (!exact || !platesOk)) {
+        const ov: ParamValues = {};
+        if (!exact) ov.size = ordered ? [a, b] : [Math.max(a, b), Math.min(a, b)];
+        if (!platesOk && wantPlates !== undefined) ov.plates = wantPlates;
+        spec = { presetId: p.id, overrides: ov };
+        // plain bricks/plates/tiles of any size are exact once resized
+        if (!exact) score += ["bricks", "plates", "tiles"].includes(p.category) && !special ? 10 : 4;
+      } else if (!exact) score -= 6;
+    }
+    if (mmM && (p.family === "wheel" || p.family === "tire")) {
+      const dia = Number(mmM[1]);
+      const w = mmM[2] ? Math.max(3.2, Math.round(Number(mmM[2]) / 0.2) * 0.2) : undefined;
+      // a LEGO tyre is named by its outer diameter; ours wraps a rim of d = outer - 2 x tread
+      const rim = p.family === "tire" ? dia - 2 * Number(d.t ?? 1.6) : dia;
+      spec = { presetId: p.id, overrides: { d: Math.round(rim / 0.2) * 0.2, ...(w ? { w: Math.round(w * 10) / 10 } : {}) } };
     }
     out.push({ part: p, score, spec });
   }
   out.sort((a, b) => b.score - a.score);
-  // de-duplicate resized suggestions of the same family
+  // de-duplicate suggestions that end up as the same part
   const seen = new Set<string>();
   return out
     .filter((s) => {
-      const k = specKey(s.spec);
+      const k = JSON.stringify({ ...s.part.defaults, ...s.spec.overrides, f: s.part.family });
       if (seen.has(k)) return false;
       seen.add(k);
       return true;
@@ -208,3 +241,5 @@ export function suggestForLegoName(legoName: string): Suggestion[] {
 
 /** Confidence threshold for automatic matching. */
 export const AUTO_MATCH_SCORE = 20;
+
+export type { ParamValue };

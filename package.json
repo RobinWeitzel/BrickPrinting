@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "update-machineblocks": "node scripts/update-machineblocks.mjs"
+    "build-library": "node scripts/build-library.mjs"
   },
   "dependencies": {
     "fflate": "^0.8.3",

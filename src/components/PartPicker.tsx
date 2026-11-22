@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { specKey, specName, suggestForLegoName, type Suggestion } from "../lib/catalog";
-import { findLDrawPart } from "../lib/ldraw";
 import { resolveItem, usageByInvKey } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, InventoryPart, PartSpec, Project } from "../lib/types";
 import { ColoredPart, LibraryBrowser, SpecIcon } from "./Library";
 import { PartEditor } from "./PartEditor";
-import { LDrawBadge, Modal, Swatch } from "./ui";
+import { Modal, Swatch } from "./ui";
 
 type PickerTab = "used" | "set" | "library";
 
@@ -86,7 +85,7 @@ function UsedPartsList({ parts, onAdd }: { parts: UsedPart[]; onAdd: (u: UsedPar
               <div className="inv-img">{u.renderSpec ? <ColoredPart spec={u.renderSpec} hex={u.hex} size={52} badge={u.imgUrl} /> : u.imgUrl ? <img src={u.imgUrl} alt="" /> : null}</div>
               <div className="inv-text">
                 <div className="inv-name">
-                  {u.title} <LDrawBadge presetId={u.renderSpec?.presetId} />
+                  {u.title}
                 </div>
                 <div className="muted small">
                   <Swatch color={{ name: u.colorName, hex: u.hex }} size={10} /> {u.colorName}
@@ -104,7 +103,7 @@ function UsedPartsList({ parts, onAdd }: { parts: UsedPart[]; onAdd: (u: UsedPar
   );
 }
 
-/** Add parts to a step: reuse parts from earlier steps, pick from the set inventory, or from the MachineBlocks library. */
+/** Add parts to a step: reuse parts from earlier steps, pick from the set inventory, or from the Part library. */
 export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () => void }) {
   const project = useStore((s) => s.project)!;
   const addItem = useStore((s) => s.addItem);
@@ -181,7 +180,7 @@ export function PartPicker({ stepId, onClose }: { stepId: string; onClose: () =>
           From set {project.set ? project.set.num : ""}
         </button>
         <button className={tab === "library" ? "active" : ""} onClick={() => setTab("library")}>
-          MachineBlocks library
+          Part library
         </button>
       </div>
       {tab === "used" ? (
@@ -233,7 +232,7 @@ function InventoryPickList({ onAdd, onMatch }: { onAdd: (inv: InventoryPart) => 
           <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} /> Hide fully placed
         </label>
       </div>
-      <p className="muted small">Click a part to add one to this step. The set's parts list says which LEGO parts exist; each LEGO part is printed as its matched MachineBlocks part.</p>
+      <p className="muted small">Click a part to add one to this step. The set's parts list says which LEGO parts exist; each LEGO part is printed as its matched part from the library.</p>
       <div className="inv-grid">
         {list.map((inv) => {
           const u = used.get(inv.key) ?? 0;
@@ -253,10 +252,9 @@ function InventoryPickList({ onAdd, onMatch }: { onAdd: (inv: InventoryPart) => 
                   </div>
                 </div>
               </button>
-              <button className={`inv-match ${m ? "" : "warn"}`} onClick={() => onMatch(inv)} title="Choose the MachineBlocks part used to print this LEGO part">
-                {m?.kind === "mb" ? <SpecIcon spec={m.spec} size={28} /> : null}
-                <span className="small">{m?.kind === "mb" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Match…"}</span>
-                {m?.kind === "mb" && <LDrawBadge presetId={m.spec.presetId} />}
+              <button className={`inv-match ${m ? "" : "warn"}`} onClick={() => onMatch(inv)} title="Choose the part used to print this LEGO part">
+                {m?.kind === "part" ? <SpecIcon spec={m.spec} size={28} /> : null}
+                <span className="small">{m?.kind === "part" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Match…"}</span>
               </button>
             </div>
           );
@@ -267,20 +265,13 @@ function InventoryPickList({ onAdd, onMatch }: { onAdd: (inv: InventoryPart) => 
   );
 }
 
-/** Choose the MachineBlocks part for a LEGO part (library → editor). */
+/** Choose the printable part for a LEGO part (library → editor). */
 export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => void }) {
   const project = useStore((s) => s.project)!;
   const setMatch = useStore((s) => s.setMatch);
   const existing = project.matches[inv.partNum];
-  const [spec, setSpec] = useState<PartSpec | null>(existing?.kind === "mb" ? existing.spec : null);
+  const [spec, setSpec] = useState<PartSpec | null>(existing?.kind === "part" ? existing.spec : null);
   const suggestions = useMemo(() => suggestForLegoName(inv.name), [inv.name]);
-  const addLDrawPart = useStore((s) => s.addLDrawPart);
-  const [ldrawNum, setLdrawNum] = useState<string | null>(null);
-  const [ldrawBusy, setLdrawBusy] = useState(false);
-  const [ldrawError, setLdrawError] = useState("");
-  useEffect(() => {
-    findLDrawPart(inv.partNum).then(setLdrawNum, () => setLdrawNum(null));
-  }, [inv.partNum]);
 
   if (spec)
     return (
@@ -292,7 +283,7 @@ export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => v
         onClose={onDone}
         onChangeBase={() => setSpec(null)}
         onSave={(s) => {
-          setMatch(inv.partNum, { kind: "mb", spec: s });
+          setMatch(inv.partNum, { kind: "part", spec: s });
           onDone();
         }}
       />
@@ -320,28 +311,6 @@ export function MatchFlow({ inv, onDone }: { inv: InventoryPart; onDone: () => v
             </button>
           )}
           <span className="spacer" />
-          {ldrawError && <span className="error small">{ldrawError}</span>}
-          {ldrawNum && (
-            <button
-              className="primary"
-              disabled={ldrawBusy}
-              onClick={async () => {
-                setLdrawBusy(true);
-                setLdrawError("");
-                try {
-                  const meta = await addLDrawPart(ldrawNum);
-                  setSpec({ presetId: meta.id, overrides: {} });
-                } catch (e) {
-                  setLdrawError(String((e as Error).message ?? e));
-                } finally {
-                  setLdrawBusy(false);
-                }
-              }}
-              title="Convert the official LDraw model of this part into a printable part"
-            >
-              {ldrawBusy ? "Converting…" : `Use LDraw model #${ldrawNum}`}
-            </button>
-          )}
           <button
             onClick={() => {
               setMatch(inv.partNum, { kind: "none" });

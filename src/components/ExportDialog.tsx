@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { download, exportBom, type ExportMode, type ExportProgress } from "../lib/export";
-import { ldrawOf } from "../lib/custom";
-import { buildBom } from "../lib/model";
+import { effectiveParams, partsById } from "../lib/catalog";
+import { buildBom, hardwareFor } from "../lib/model";
 import { useStore } from "../lib/store";
 import { ColoredPart } from "./Library";
-import { LDrawBadge, Modal, NumberInput, Swatch } from "./ui";
+import { Modal, NumberInput, Swatch } from "./ui";
 
 const MODES: { id: ExportMode; title: string; text: string }[] = [
   { id: "stl-zip", title: "STL files", text: "One STL per part type, sorted into a folder per color. Quantity is in the file name." },
@@ -97,16 +97,11 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
 
       {bom.unmatched.length > 0 && (
         <div className="notice warn">
-          <strong>{bom.unmatched.reduce((a, u) => a + u.qty, 0)} parts are skipped</strong> because they have no MachineBlocks match: {bom.unmatched.map((u) => `${u.qty}× ${u.title} (${u.color.name})`).join(", ")}
+          <strong>{bom.unmatched.reduce((a, u) => a + u.qty, 0)} parts are skipped</strong> because they have no matching part: {bom.unmatched.map((u) => `${u.qty}× ${u.title} (${u.color.name})`).join(", ")}
         </div>
       )}
 
-      {bom.lines.some((l) => ldrawOf(l.spec.presetId)) && (
-        <div className="notice warn">
-          Parts marked <span className="ldraw-badge">LDraw</span> are converted LDraw models with exact LEGO dimensions and no print tolerances. They may fit tighter or looser than MachineBlocks
-          parts, so print one first to check.
-        </div>
-      )}
+      <HardwareNotice bom={bom} />
       <p className="muted">
         {totalParts} parts, {bom.lines.length} unique part/color combinations, {colorCount} colors. Each unique part is generated once in your browser.
       </p>
@@ -118,7 +113,7 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
                 <td className="num-cell">{l.qty}×</td>
                 <td><ColoredPart spec={l.spec} hex={l.color.hex} size={36} /></td>
                 <td>
-                  {l.name} <LDrawBadge presetId={l.spec.presetId} />
+                  {l.name}
                   {l.legoParts.length > 0 && <div className="muted small">LEGO #{l.legoParts.join(", #")}</div>}
                 </td>
                 <td>
@@ -130,5 +125,27 @@ export function ExportDialog({ onClose }: { onClose: () => void }) {
         </tbody>
       </table>
     </Modal>
+  );
+}
+
+/** Clips and axles the printed parts need (they connect through slots and bores). */
+function HardwareNotice({ bom }: { bom: ReturnType<typeof buildBom> }) {
+  const hw = hardwareFor(bom);
+  if (!hw.slots && !hw.axles.length) return null;
+  const printedClips = bom.lines.filter((l) => partsById.get(l.spec.presetId)?.family === "clips").reduce((a, l) => a + l.qty * Number(effectiveParams(l.spec).n ?? 1), 0);
+  return (
+    <div className="notice">
+      {hw.slots > 0 && (
+        <div>
+          The parts have <strong>{hw.slots} side/top slots</strong>, so the build needs up to {Math.ceil(hw.slots / 2)} clips (one joins two slots).
+          {printedClips > 0 ? ` ${printedClips} clips are in this export.` : " Add a clip sheet (Clips in the part library) to a step to print them."}
+        </div>
+      )}
+      {hw.axles.length > 0 && (
+        <div>
+          Axles (Ø3 steel rod, M3 screw or a printed axle): {hw.axles.map((a) => `${a.qty}× ${a.length} mm`).join(", ")}.
+        </div>
+      )}
+    </div>
   );
 }
