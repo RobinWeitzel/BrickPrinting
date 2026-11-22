@@ -1,7 +1,6 @@
 import { createStore, get as idbGet, set as idbSet } from "idb-keyval";
 import type { RenderRequest, RenderResponse } from "../workers/openscad.worker";
-import { base, effectiveParams, partsById, scadUrl, specKey } from "./catalog";
-import { customStl, isCustom } from "./custom";
+import { base, effectiveParams, familyOf, partsById, specKey } from "./catalog";
 import type { ParamValue, PartSpec } from "./types";
 
 const stlStore = createStore("brickprinting-stl", "stl");
@@ -13,22 +12,45 @@ export function toScad(v: ParamValue): string {
   return String(v);
 }
 
-function definesFor(spec: PartSpec): string[] {
-  const p = partsById.get(spec.presetId);
-  const out: string[] = [];
-  for (const [k, v] of Object.entries(spec.overrides)) {
-    if (p && JSON.stringify(p.defaults[k]) === JSON.stringify(v)) continue;
-    out.push(`${k}=${toScad(v)}`);
-  }
-  return out;
+// ---- fit values (global overrides of scad/config.scad, from Settings) ----
+
+/** The tunable fit values of scad/config.scad with their validated defaults (SPEC.md). */
+export const FIT_PARAMS = [
+  { name: "RIB_D", label: "Stud socket: rib tip diameter", default: 4.75, step: 0.05, hint: "smaller = tighter studs" },
+  { name: "SLOT_INTERF", label: "Clip slot: barb interference per side", default: 0.1, step: 0.05, hint: "larger = tighter clips" },
+  { name: "SLOT_CLEAR", label: "Clip slot: clearance per side (thickness)", default: 0.15, step: 0.05, hint: "larger = looser clips" },
+  { name: "BORE_SPIN_D", label: "Spinning bore diameter", default: 3.2, step: 0.05, hint: "larger = freer wheels" },
+  { name: "BORE_GRIP_D", label: "Grip bore: rib tip diameter", default: 2.8, step: 0.05, hint: "smaller = tighter axle" },
+] as const;
+
+let fitDefines: string[] = [];
+let fitKey = "";
+
+/** Sets the fit overrides used for every render (only values that differ from the defaults). */
+export function setFitOverrides(fit: Record<string, number> | undefined) {
+  fitDefines = FIT_PARAMS.filter((p) => fit?.[p.name] !== undefined && fit[p.name] !== p.default).map((p) => `${p.name}=${fit![p.name]}`);
+  fitKey = fitDefines.join(",");
 }
 
-/** Cut-outs in mm (8 mm per stud, scaled with the part's scale setting). */
+/** Cache key of a rendered part: the spec plus the fit settings. */
+export const renderKey = (spec: PartSpec) => `${fitKey}|${specKey(spec)}`;
+
+/** -D defines: every parameter that differs from the family file's own defaults. */
+function definesFor(spec: PartSpec): string[] {
+  const p = partsById.get(spec.presetId)!;
+  const famDefaults = familyOf(p).defaults;
+  const out: string[] = [];
+  for (const [k, v] of Object.entries(effectiveParams(spec))) {
+    if (JSON.stringify(famDefaults[k]) === JSON.stringify(v)) continue;
+    out.push(`${k}=${toScad(v)}`);
+  }
+  return [...out, ...fitDefines];
+}
+
+/** Cut-outs in mm (8 mm per stud). */
 function cutoutsMm(spec: PartSpec): [number, number, number, number][] | undefined {
   if (!spec.cutouts?.length) return undefined;
-  const scale = Number(effectiveParams(spec).scale_ovr ?? 1) || 1;
-  const g = 8 * (effectiveParams(spec).overrideConfig ? scale : 1);
-  return spec.cutouts.filter((c) => c.w > 0 && c.d > 0).map((c) => [c.x * g, c.y * g, c.w * g, c.d * g]);
+  return spec.cutouts.filter((c) => c.w > 0 && c.d > 0).map((c) => [c.x * 8, c.y * 8, c.w * 8, c.d * 8]);
 }
 
 // ---- worker queue (single worker, serial) ----
@@ -58,29 +80,19 @@ const memCache = new Map<string, Promise<ArrayBuffer>>();
 
 /** Renders a part to binary STL (cached in memory and IndexedDB). */
 export function renderStl(spec: PartSpec): Promise<ArrayBuffer> {
-  const key = specKey(spec);
+  const key = renderKey(spec);
   let p = memCache.get(key);
   if (p) return p;
   p = (async () => {
-    if (isCustom(spec.presetId)) {
-      const stl = await customStl(spec.presetId);
-      const cuts = cutoutsMm(spec);
-      if (!cuts?.length) return stl;
-      const id = nextId++;
-      return new Promise<ArrayBuffer>((resolve, reject) => {
-        pending.set(id, { resolve, reject });
-        getWorker().postMessage({ id, presetId: spec.presetId, scadUrl: "", fsUrl: "", defines: [], cutouts: cuts, stl: stl.slice(0) } satisfies RenderRequest);
-      });
-    }
     const cached = await idbGet<ArrayBuffer>(key, stlStore).catch(() => undefined);
     if (cached) return cached;
-    if (!partsById.has(spec.presetId)) throw new Error(`Unknown part ${spec.presetId}`);
+    const part = partsById.get(spec.presetId);
+    if (!part) throw new Error(`Unknown part ${spec.presetId}`);
     const id = nextId++;
     const req: RenderRequest = {
       id,
-      presetId: spec.presetId,
-      scadUrl: new URL(scadUrl(spec.presetId), location.href).href,
-      fsUrl: new URL(`${base}machineblocks/fs.json`, location.href).href,
+      family: part.family,
+      libUrl: new URL(`${base}library/fs.json`, location.href).href,
       defines: definesFor(spec),
       cutouts: cutoutsMm(spec),
     };

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { findLDrawPart, ldrawLibInfo } from "../lib/ldraw";
 import { AUTO_MATCH_SCORE, specName, suggestForLegoName } from "../lib/catalog";
 import { usageByInvKey } from "../lib/model";
 import { DOWNLOADS_URL, RB_FILE_IDS, RB_FILES, importFiles, importedFiles, lookupSet, parseInventoryCsv, type RbFileId, type RbFileInfo, type SetLookupResult } from "../lib/rebrickable";
@@ -7,7 +6,7 @@ import { useStore } from "../lib/store";
 import type { InventoryPart } from "../lib/types";
 import { SpecIcon } from "./Library";
 import { MatchFlow } from "./PartPicker";
-import { CustomColor, LDrawBadge, Modal, Swatch } from "./ui";
+import { CustomColor, Modal, Swatch } from "./ui";
 
 export function InventoryView({ onClose }: { onClose: () => void }) {
   const project = useStore((s) => s.project)!;
@@ -19,8 +18,6 @@ export function InventoryView({ onClose }: { onClose: () => void }) {
   const [matching, setMatching] = useState<InventoryPart | null>(null);
   const [filter, setFilter] = useState<"all" | "unmatched">("all");
   const [notice, setNotice] = useState("");
-  const [autoBusy, setAutoBusy] = useState(false);
-  const addLDrawPart = useStore((s) => s.addLDrawPart);
   const updateProject = useStore((s) => s.updateProject);
   const [files, setFiles] = useState<Partial<Record<RbFileId, RbFileInfo>> | null>(null);
 
@@ -59,49 +56,21 @@ export function InventoryView({ onClose }: { onClose: () => void }) {
     }
   }
 
-  /**
-   * Matches unmatched LEGO parts: first to a MachineBlocks preset when the match is obvious,
-   * otherwise to the converted LDraw model (if the LDraw library is imported).
-   */
-  async function autoMatch(inventory: InventoryPart[] = project.inventory) {
+  /** Matches unmatched LEGO parts to a library part (resized where needed) when the match is obvious. */
+  function autoMatch(inventory: InventoryPart[] = project.inventory) {
     setMatching(null);
-    setAutoBusy(true);
-    try {
-      const current = useStore.getState().project!.matches;
-      const todo = [...new Map(inventory.filter((i) => !current[i.partNum]).map((i) => [i.partNum, i])).values()];
-      let mb = 0, ld = 0;
-      const rest: InventoryPart[] = [];
-      for (const inv of todo) {
-        const best = suggestForLegoName(inv.name)[0];
-        if (best && best.score >= AUTO_MATCH_SCORE) {
-          setMatch(inv.partNum, { kind: "mb", spec: best.spec });
-          mb++;
-        } else rest.push(inv);
+    const current = useStore.getState().project!.matches;
+    const todo = [...new Map(inventory.filter((i) => !current[i.partNum]).map((i) => [i.partNum, i])).values()];
+    let matched = 0;
+    for (const inv of todo) {
+      const best = suggestForLegoName(inv.name)[0];
+      if (best && best.score >= AUTO_MATCH_SCORE) {
+        setMatch(inv.partNum, { kind: "part", spec: best.spec });
+        matched++;
       }
-      const hasLDraw = !!(await ldrawLibInfo());
-      let left = rest.length;
-      if (hasLDraw) {
-        for (const [i, inv] of rest.entries()) {
-          setNotice(`Matched ${mb} with MachineBlocks. Converting LDraw models… ${i + 1}/${rest.length}`);
-          const num = await findLDrawPart(inv.partNum);
-          if (!num) continue;
-          try {
-            const meta = await addLDrawPart(num);
-            setMatch(inv.partNum, { kind: "mb", spec: { presetId: meta.id, overrides: {} } });
-            ld++;
-            left--;
-          } catch {
-            /* leave unmatched */
-          }
-        }
-      }
-      const parts = [`${mb} with MachineBlocks`, hasLDraw ? `${ld} with LDraw models (marked “LDraw”, check their fit)` : ""].filter(Boolean).join(", ");
-      setNotice(
-        `Matched ${parts}. ${left ? `${left} left to match by hand.` : "Everything is matched."}${!hasLDraw && left ? " Import the LDraw library under My parts in the part library to match the rest automatically." : ""} Please check the matches below.`,
-      );
-    } finally {
-      setAutoBusy(false);
     }
+    const left = todo.length - matched;
+    setNotice(`Matched ${matched} part types. ${left ? `${left} left to match by hand (or mark as not printable).` : "Everything is matched."} Please check the matches below.`);
   }
 
   const partNums = [...new Set(project.inventory.map((i) => i.partNum))];
@@ -148,13 +117,12 @@ export function InventoryView({ onClose }: { onClose: () => void }) {
               <option value="all">Show all</option>
               <option value="unmatched">Only unmatched</option>
             </select>
-            <button onClick={() => autoMatch()} disabled={unmatchedCount === 0 || autoBusy} title="MachineBlocks parts first; LDraw models for the rest (if the LDraw library is imported)">
-              {autoBusy ? "Matching…" : "Auto-match parts"}
+            <button onClick={() => autoMatch()} disabled={unmatchedCount === 0} title="Matches plain bricks, plates, tiles, slopes and similar parts; resizes them where needed">
+              Auto-match parts
             </button>
             {Object.keys(project.matches).length > 0 && (
               <button
                 className="link small danger"
-                disabled={autoBusy}
                 onClick={() => {
                   if (confirm("Clear all part matches of this project? Parts placed in steps stay; they'll show as not matched until you match them again.")) {
                     updateProject((p) => ({ ...p, matches: {} }));
@@ -202,9 +170,8 @@ export function InventoryView({ onClose }: { onClose: () => void }) {
                     <td className={`num-cell ${u >= inv.qty ? "ok" : ""}`}>{u}</td>
                     <td>
                       <button className={`match-btn ${m ? "" : "warn"}`} onClick={() => setMatching(inv)}>
-                        {m?.kind === "mb" && <SpecIcon spec={m.spec} size={32} />}
-                        <span>{m?.kind === "mb" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Choose part…"}</span>
-                        {m?.kind === "mb" && <LDrawBadge presetId={m.spec.presetId} />}
+                        {m?.kind === "part" && <SpecIcon spec={m.spec} size={32} />}
+                        <span>{m?.kind === "part" ? specName(m.spec) : m?.kind === "none" ? "Not printable" : "Choose part…"}</span>
                       </button>
                     </td>
                   </tr>

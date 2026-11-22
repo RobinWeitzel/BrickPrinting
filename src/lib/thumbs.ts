@@ -1,6 +1,6 @@
 import * as THREE from "three";
-import { specKey } from "./catalog";
-import { renderStl } from "./render";
+
+import { renderKey, renderStl } from "./render";
 import { parseBinaryStl } from "./stl";
 import type { PartSpec } from "./types";
 
@@ -35,7 +35,7 @@ const images = new Map<string, Promise<string>>();
 let chain: Promise<unknown> = Promise.resolve();
 
 function geometryFor(spec: PartSpec) {
-  const key = specKey(spec);
+  const key = renderKey(spec);
   let g = geometries.get(key);
   if (!g) {
     g = renderStl(spec).then((buf) => {
@@ -55,7 +55,7 @@ function geometryFor(spec: PartSpec) {
 
 /** Returns a PNG data URL of the part in the given color. */
 export function partThumbnail(spec: PartSpec, hex: string): Promise<string> {
-  const key = `${specKey(spec)}|${hex.toLowerCase()}`;
+  const key = `${renderKey(spec)}|${hex.toLowerCase()}`;
   let p = images.get(key);
   if (p) return p;
   p = geometryFor(spec).then((geo) => {

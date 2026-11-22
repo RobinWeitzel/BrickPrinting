@@ -1,6 +1,7 @@
 import { del, get, set } from "idb-keyval";
 import { create } from "zustand";
-import { addCustomPart, addLDrawFiles, addLDrawLibraryPart, deleteCustomPart, listCustomParts, renameCustomPart, type CustomPartMeta } from "./custom";
+import { partsById } from "./catalog";
+import { setFitOverrides } from "./render";
 import type { Color, ColorRef, InventoryPart, Match, Project, ProjectSummary, Settings, Step, StepItem } from "./types";
 
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -14,12 +15,6 @@ export type SidePanel = { kind: "pick"; stepId: string } | { kind: "editItem"; s
 
 interface State {
   ready: boolean;
-  customParts: CustomPartMeta[];
-  uploadCustomParts(files: File[]): Promise<{ added: CustomPartMeta[]; errors: string[] }>;
-  removeCustomPart(id: string): Promise<void>;
-  renameCustomPart(id: string, name: string): Promise<void>;
-  refreshCustomParts(): Promise<void>;
-  addLDrawPart(partNum: string): Promise<CustomPartMeta>;
   panel: SidePanel | null;
   setPanel(p: SidePanel | null): void;
   settings: Settings;
@@ -58,6 +53,21 @@ interface State {
   replaceColor(from: Color, to: Color): void;
 }
 
+/**
+ * Brings projects from older versions up to date: matches to parts that no longer exist
+ * (MachineBlocks presets, uploaded STL/LDraw parts) are dropped, so those LEGO parts show
+ * as unmatched again. Explicit step parts that no longer exist show as missing.
+ */
+function migrateProject(p: Project): Project {
+  const matches: Project["matches"] = {};
+  for (const [num, m] of Object.entries(p.matches ?? {})) {
+    const kind = (m as { kind: string }).kind;
+    if (kind === "none") matches[num] = m;
+    else if ((kind === "part" || kind === "mb") && "spec" in m && partsById.has(m.spec.presetId)) matches[num] = { kind: "part", spec: m.spec };
+  }
+  return { ...p, colorMap: p.colorMap ?? {}, matches };
+}
+
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 
 function summarize(p: Project): ProjectSummary {
@@ -88,42 +98,6 @@ export const useStore = create<State>((setState, getState) => {
 
   return {
     ready: false,
-    customParts: [],
-    async uploadCustomParts(files) {
-      const added: CustomPartMeta[] = [];
-      const errors: string[] = [];
-      const ld = files.filter((f) => /\.(dat|ldr)$/i.test(f.name));
-      if (ld.length) {
-        const r = await addLDrawFiles(ld);
-        added.push(...r.added);
-        errors.push(...r.errors);
-      }
-      for (const f of files.filter((f) => !/\.(dat|ldr)$/i.test(f.name))) {
-        try {
-          added.push(await addCustomPart(f));
-        } catch (e) {
-          errors.push(String((e as Error).message ?? e));
-        }
-      }
-      setState({ customParts: await listCustomParts() });
-      return { added, errors };
-    },
-    async removeCustomPart(id) {
-      await deleteCustomPart(id);
-      setState({ customParts: await listCustomParts() });
-    },
-    async renameCustomPart(id, name) {
-      await renameCustomPart(id, name);
-      setState({ customParts: await listCustomParts() });
-    },
-    async addLDrawPart(partNum) {
-      const meta = await addLDrawLibraryPart(partNum);
-      setState({ customParts: await listCustomParts() });
-      return meta;
-    },
-    async refreshCustomParts() {
-      setState({ customParts: await listCustomParts() });
-    },
     panel: null,
     setPanel(panel) {
       setState({ panel });
@@ -137,14 +111,15 @@ export const useStore = create<State>((setState, getState) => {
     selectedStepId: null,
 
     async init() {
-      const [settings, projects, lastId, customParts] = await Promise.all([get<Settings>("settings"), get<ProjectSummary[]>("projects"), get<string>("lastProject"), listCustomParts().catch(() => [])]);
-      setState({ customParts });
+      const [settings, projects, lastId] = await Promise.all([get<Settings>("settings"), get<ProjectSummary[]>("projects"), get<string>("lastProject")]);
+      setFitOverrides(settings?.fit);
       setState({ settings: { ...DEFAULT_SETTINGS, ...settings }, projects: projects ?? [], ready: true });
       if (lastId && projects?.some((p) => p.id === lastId)) await getState().openProject(lastId);
     },
 
     updateSettings(patch) {
       const s = { ...getState().settings, ...patch };
+      if (patch.fit) setFitOverrides(patch.fit);
       setState({ settings: s });
       set("settings", s);
     },
@@ -164,7 +139,7 @@ export const useStore = create<State>((setState, getState) => {
       }
       const [p, blob] = await Promise.all([get<Project>(`project:${id}`), get<Blob>(`pdf:${id}`)]);
       if (!p) return;
-      setState({ panel: null, project: { ...p, colorMap: p.colorMap ?? {} }, pdfBlob: blob ?? null, page: p.steps.at(-1)?.page ?? 1, selectedStepId: p.steps.at(-1)?.id ?? null });
+      setState({ panel: null, project: migrateProject(p), pdfBlob: blob ?? null, page: p.steps.at(-1)?.page ?? 1, selectedStepId: p.steps.at(-1)?.id ?? null });
       await set("lastProject", id);
     },
 
@@ -176,7 +151,8 @@ export const useStore = create<State>((setState, getState) => {
       if (getState().project?.id === id) await getState().openProject(null);
     },
 
-    async importProject(p) {
+    async importProject(imported) {
+      const p = migrateProject(imported);
       const exists = getState().projects.some((x) => x.id === p.id);
       const proj = exists ? { ...p, id: uid(), name: p.name + " (imported)" } : p;
       setState({ project: proj, pdfBlob: null, page: 1, selectedStepId: proj.steps[0]?.id ?? null });

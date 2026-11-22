@@ -7,7 +7,7 @@ import { ColoredPart } from "./Library";
 import { MatchFlow, PartPicker } from "./PartPicker";
 import { PartEditor } from "./PartEditor";
 import { StepCrop } from "./PdfViewer";
-import { ColorPicker, InlineContext, LDrawBadge, Qty, Swatch } from "./ui";
+import { ColorPicker, InlineContext, Qty, Swatch } from "./ui";
 
 const loadWidth = (key: string, fallback: number) => {
   try {
@@ -193,15 +193,14 @@ function ItemRow({ step, item }: { step: Step; item: StepItem }) {
     <div className="item">
       <div className="item-img">{r.spec ? <ColoredPart spec={r.spec} hex={r.color.hex} size={44} badge={r.inv?.imgUrl} /> : r.inv?.imgUrl ? <img src={r.inv.imgUrl} alt="" /> : null}</div>
       <div className="item-text">
-        <button className="link item-title" onClick={edit} title={r.inv ? "Change the MachineBlocks part for this LEGO part" : "Edit part"}>
+        <button className="link item-title" onClick={edit} title={r.inv ? "Change the printed part for this LEGO part" : "Edit part"}>
           {r.title}
         </button>
         {r.subtitle && (
           <div className={`small ${r.spec ? "muted" : "warn-text"}`}>
-            {r.subtitle} <LDrawBadge presetId={r.spec?.presetId} />
+            {r.subtitle}
           </div>
         )}
-        {!r.subtitle && <LDrawBadge presetId={r.spec?.presetId} />}
         <div className="row gap-s">
           <ColorPicker value={item.color} onChange={(color) => updateItem(step.id, item.id, { color })} legoColorId={r.inv?.colorId} />
         </div>
@@ -224,7 +223,7 @@ function Totals() {
     <div className="totals">
       {bom.unmatched.length > 0 && (
         <div className="notice warn">
-          {bom.unmatched.reduce((a, u) => a + u.qty, 0)} placed parts have no MachineBlocks match yet and won't be exported.
+          {bom.unmatched.reduce((a, u) => a + u.qty, 0)} placed parts have no matching part yet and won't be exported.
         </div>
       )}
       <table>
@@ -235,7 +234,7 @@ function Totals() {
                 <td className="num-cell">{l.qty}×</td>
                 <td><ColoredPart spec={l.spec} hex={l.color.hex} size={36} /></td>
                 <td>
-                  {l.name} <LDrawBadge presetId={l.spec.presetId} />
+                  {l.name}
                   <div className="muted small">steps {l.steps.join(", ")}</div>
                 </td>
                 <td>

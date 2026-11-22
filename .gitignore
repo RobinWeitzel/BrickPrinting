@@ -25,3 +25,5 @@ dist-ssr
 .cache
 # local test data (LEGO instructions are copyrighted, never commit them)
 *.pdf
+.venv/
+scad/out/

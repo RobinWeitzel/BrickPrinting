@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { categoryName, partsById, schemaOf, type ParamSchema } from "../lib/catalog";
+import { categoryName, familyOf, partsById, schemaOf, type ParamSchema } from "../lib/catalog";
 import { resolveColor, savedColors } from "../lib/model";
 import { useStore } from "../lib/store";
 import type { ColorRef, Cutout, ParamValue, PartSpec } from "../lib/types";
 import { Preview3D } from "./Preview3D";
-import { ColorPicker, LDrawBadge, Modal, NumberInput, Qty, RecentSwatches } from "./ui";
+import { ColorPicker, Modal, NumberInput, Qty, RecentSwatches } from "./ui";
 
 interface Props {
   title: string;
@@ -27,9 +27,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
     initialColor ?? (legoColorId !== undefined ? { lego: legoColorId } : (savedColors(project)[0] ?? { custom: filaments[0] ?? { name: "Light Bluish Gray", hex: "#A0A5A9" } })),
   );
   const [qty, setQty] = useState(initialQty ?? 1);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const part = partsById.get(spec.presetId); // undefined for uploaded STL parts
-  const custom = useStore((s) => s.customParts.find((c) => c.id === spec.presetId));
+  const part = partsById.get(spec.presetId); // undefined for parts no longer in the library
   const defaults = part?.defaults ?? {};
   const schema = useMemo(() => (part ? schemaOf(part) : []), [part]);
   const values = { ...defaults, ...spec.overrides };
@@ -37,7 +35,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
   const sections = useMemo(() => {
     const m = new Map<string, ParamSchema[]>();
     for (const p of schema) {
-      if (p.name === "size") continue;
+      if (p.name === "size" || p.name === "plates") continue; // shown on top
       m.set(p.section, [...(m.get(p.section) ?? []), p]);
     }
     return [...m];
@@ -47,6 +45,7 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
   const changed = Object.keys(spec.overrides).filter((k) => JSON.stringify(spec.overrides[k]) !== JSON.stringify(defaults[k]));
 
   const size = values.size as number[] | undefined;
+  const plates = typeof values.plates === "number" ? values.plates : undefined;
 
   return (
     <Modal
@@ -73,14 +72,9 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
           <Preview3D spec={spec} color={resolveColor(project, color).hex} height={320} />
           <div className="editor-base">
             <div>
-              <div className="muted small">{part ? categoryName(part.category) : "My parts"}</div>
-              <strong>{part?.name ?? custom?.name ?? "Missing custom part"}</strong>
-              {custom && <div className="muted small">{custom.size.map((v) => v.toFixed(1)).join(" × ")} mm · {custom.fileName}</div>}
-              {custom?.ldraw && (
-                <div className="small warn-text">
-                  <LDrawBadge presetId={custom.id} /> Converted from LDraw: exact LEGO dimensions without print tolerances. Print a test piece to check the fit.
-                </div>
-              )}
+              <div className="muted small">{part ? categoryName(part.category) : "Missing part"}</div>
+              <strong>{part?.name ?? `Not in the library: ${spec.presetId}`}</strong>
+              {part && <div className="muted small">{familyOf(part).description}</div>}
             </div>
             {onChangeBase && <button onClick={onChangeBase}>Change base part</button>}
           </div>
@@ -98,16 +92,16 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
           </div>
           {size && (
             <div className="field">
-              <label>Size (studs × studs × height in plates)</label>
+              <label>Size in studs{plates !== undefined ? " and height in plates" : ""}</label>
               <div className="row gap">
                 {size.map((v, i) => (
                   <NumberInput
                     key={i}
-                    min={i === 2 ? 1 : 0.5}
+                    min={1}
                     max={64}
                     step={1}
                     value={v}
-                    ariaLabel={["Studs X", "Studs Y", "Height in plates"][i]}
+                    ariaLabel={["Studs along X", "Studs along Y"][i]}
                     onChange={(val) => {
                       const n = [...size];
                       n[i] = val;
@@ -115,28 +109,28 @@ export function PartEditor({ title, spec: initial, color: initialColor, qty: ini
                     }}
                   />
                 ))}
-                <span className="muted small">{size[2] === 1 ? "plate" : size[2] === 3 ? "brick" : `${size[2] / 3} bricks`}</span>
+                {plates !== undefined && (
+                  <>
+                    <span className="muted">×</span>
+                    <NumberInput min={1} max={36} step={1} value={plates} ariaLabel="Height in plates" onChange={(v) => set("plates", v)} />
+                    <span className="muted small">{plates === 1 ? "plate" : plates === 3 ? "brick" : plates % 3 === 0 ? `${plates / 3} bricks` : `${plates} plates`}</span>
+                  </>
+                )}
               </div>
             </div>
           )}
-          {schema.length > 0 && (
-          <button className="link" onClick={() => setShowAdvanced(!showAdvanced)}>
-            {showAdvanced ? "▾" : "▸"} All parameters {changed.filter((c) => c !== "size").length > 0 && `(${changed.filter((c) => c !== "size").length} changed)`}
-          </button>
-          )}
-          {showAdvanced &&
-            sections.map(([section, params]) => (
-              <fieldset key={section}>
-                <legend>{section}</legend>
-                {params.map((p) => (
-                  <ParamField key={p.name} schema={p} value={values[p.name]} changed={changed.includes(p.name)} onChange={(v) => set(p.name, v)} />
-                ))}
-              </fieldset>
-            ))}
+          {sections.map(([section, params]) => (
+            <fieldset key={section}>
+              <legend>{section}</legend>
+              {params.map((p) => (
+                <ParamField key={p.name} schema={p} value={values[p.name]} changed={changed.includes(p.name)} onChange={(v) => set(p.name, v)} />
+              ))}
+            </fieldset>
+          ))}
           <CutoutEditor cutouts={spec.cutouts ?? []} size={size} onChange={(cutouts) => setSpec((s) => ({ ...s, cutouts }))} />
           {(changed.length > 0 || !!spec.cutouts?.length) && (
             <button className="link" onClick={() => setSpec({ presetId: spec.presetId, overrides: {} })}>
-              {part ? "Reset to preset" : "Remove cut-outs"}
+              Reset to preset
             </button>
           )}
         </div>
@@ -170,6 +164,9 @@ function ParamField({ schema, value, onChange, changed }: { schema: ParamSchema;
         </select>
       </label>
     );
+  // flat number lists of any length (e.g. slot cells): edited as "0, 2"
+  if (Array.isArray(value) && value.every((v) => typeof v === "number") && schema.min === undefined)
+    return <ListField label={label} value={value as number[]} onChange={onChange} />;
   if (Array.isArray(value))
     return (
       <label className="param">
@@ -205,6 +202,24 @@ function ParamField({ schema, value, onChange, changed }: { schema: ParamSchema;
     <label className="param">
       {label}
       <input value={String(value)} onChange={(e) => onChange(e.target.value)} />
+    </label>
+  );
+}
+
+function ListField({ label, value, onChange }: { label: React.ReactNode; value: number[]; onChange: (v: number[]) => void }) {
+  const [text, setText] = useState(value.join(", "));
+  return (
+    <label className="param">
+      {label}
+      <input
+        value={text}
+        placeholder="none, e.g. 0, 1"
+        onChange={(e) => {
+          setText(e.target.value);
+          const nums = e.target.value.split(/[\s,;]+/).filter(Boolean).map(Number);
+          if (nums.every((n) => Number.isFinite(n))) onChange(nums);
+        }}
+      />
     </label>
   );
 }

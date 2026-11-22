@@ -3,14 +3,13 @@ import { createOpenSCAD } from "openscad-wasm";
 
 export interface RenderRequest {
   id: number;
-  presetId: string; // e.g. "plates/plate-2x2"
-  scadUrl: string;
-  fsUrl: string;
-  defines: string[]; // ["size=[2,2,1]", ...]
+  /** part family = scad/families/<family>.scad */
+  family: string;
+  /** JSON map of library files (public/library/fs.json) */
+  libUrl: string;
+  defines: string[]; // ["size=[2,2]", "RIB_D=4.8", ...]
   /** rectangles in mm [x, y, w, d] removed through the full height */
   cutouts?: [number, number, number, number][];
-  /** an existing binary STL (uploaded custom part): skip generation, only apply cut-outs */
-  stl?: ArrayBuffer;
 }
 
 export type RenderResponse =
@@ -18,7 +17,6 @@ export type RenderResponse =
   | { id: number; ok: false; error: string; log: string[] };
 
 let libFiles: Promise<Record<string, string>> | null = null;
-const scadCache = new Map<string, Promise<string>>();
 
 function mkdirp(FS: { mkdir(p: string): void }, dir: string) {
   let cur = "";
@@ -34,21 +32,11 @@ function mkdirp(FS: { mkdir(p: string): void }, dir: string) {
 
 async function render(req: RenderRequest): Promise<RenderResponse> {
   const t0 = performance.now();
-  if (req.stl) return cutPass(req, new Uint8Array(req.stl), [], t0);
-  libFiles ??= fetch(req.fsUrl).then((r) => {
-    if (!r.ok) throw new Error(`Failed to load MachineBlocks library (${r.status})`);
+  libFiles ??= fetch(req.libUrl).then((r) => {
+    if (!r.ok) throw new Error(`Failed to load the part library (${r.status})`);
     return r.json();
   });
-  if (!scadCache.has(req.scadUrl)) {
-    scadCache.set(
-      req.scadUrl,
-      fetch(req.scadUrl).then((r) => {
-        if (!r.ok) throw new Error(`Failed to load ${req.scadUrl} (${r.status})`);
-        return r.text();
-      }),
-    );
-  }
-  const [files, scad] = await Promise.all([libFiles, scadCache.get(req.scadUrl)!]);
+  const files = await libFiles;
 
   const log: string[] = [];
   // A fresh instance per render: OpenSCAD's main() can only run once per instance.
@@ -56,15 +44,11 @@ async function render(req: RenderRequest): Promise<RenderResponse> {
   const os = inst.getInstance();
   const FS = os.FS;
   for (const [rel, content] of Object.entries(files)) {
-    const p = "/mb/" + rel;
+    const p = "/lib/" + rel;
     mkdirp(FS, p.slice(0, p.lastIndexOf("/")));
     FS.writeFile(p, content);
   }
-  const partPath = `/mb/examples/${req.presetId}.scad`;
-  mkdirp(FS, partPath.slice(0, partPath.lastIndexOf("/")));
-  FS.writeFile(partPath, scad);
-
-  const args = [partPath, "-o", "/out.stl", "--backend=manifold", "--export-format=binstl"];
+  const args = [`/lib/families/${req.family}.scad`, "-o", "/out.stl", "--backend=manifold", "--export-format=binstl"];
   for (const d of req.defines) args.push("-D", d);
   let rc: number;
   try {

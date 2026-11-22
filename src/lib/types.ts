@@ -9,7 +9,7 @@ export interface Cutout {
   d: number;
 }
 
-/** A MachineBlocks part: a preset from the catalog plus parameter overrides and optional cut-outs. */
+/** A printable part: a preset from the catalog (scad/library.json) plus parameter overrides and optional cut-outs. */
 export interface PartSpec {
   presetId: string;
   overrides: ParamValues;
@@ -35,7 +35,7 @@ export interface InventoryPart {
 }
 
 export type Match =
-  | { kind: "mb"; spec: PartSpec }
+  | { kind: "part"; spec: PartSpec }
   | { kind: "none"; note?: string };
 
 /** Color of an item: either follows the LEGO color (via the project color map) or is set explicitly. */
@@ -44,7 +44,7 @@ export type ColorRef = { lego: number } | { custom: Color };
 export interface StepItem {
   id: string;
   qty: number;
-  /** Link to an inventory line. The MachineBlocks part then comes from the project's matches. */
+  /** Link to an inventory line. The printed part then comes from the project's matches. */
   invKey?: string;
   /** Explicit part (used when not linked to the inventory, or to override the match). */
   spec?: PartSpec;
@@ -81,7 +81,7 @@ export interface Project {
   pdf?: PdfInfo;
   set?: { num: string; name: string; imgUrl?: string };
   inventory: InventoryPart[];
-  /** LEGO part number -> MachineBlocks match */
+  /** LEGO part number -> printable part */
   matches: Record<string, Match>;
   /** LEGO color id -> filament color */
   colorMap: Record<string, Color>;
@@ -93,6 +93,8 @@ export interface Project {
 export interface Settings {
   filaments: Color[];
   plate: { width: number; depth: number; spacing: number };
+  /** overrides of the fit values in scad/config.scad (from the calibration coupons), e.g. { RIB_D: 4.8 } */
+  fit?: Record<string, number>;
 }
 
 export interface ProjectSummary {

@@ -1158,57 +1158,13 @@ th {
 .cat.mine {
   font-weight: 600;
 }
-.custom-card {
-  padding: 0;
-  gap: 0;
-}
-.custom-pick {
-  border: none;
-  background: none;
-  flex-direction: column;
-  white-space: normal;
-  text-align: center;
-  font-size: 12px;
-  gap: 4px;
-  padding: 8px 6px 4px;
-  width: 100%;
-}
-.custom-actions {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  padding-bottom: 6px;
-}
 .dropzone.small-drop {
   flex: none;
   margin: 0 0 12px;
   min-height: 90px;
 }
 
-.ldraw-card {
-  margin-bottom: 12px;
-}
-.ldraw-card.drag {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.ldraw-card p {
-  margin: 8px 0 0;
-}
 
-.ldraw-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--warn);
-  background: var(--warn-soft);
-  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
-  border-radius: 4px;
-  padding: 0 4px;
-  vertical-align: 1px;
-  white-space: nowrap;
-}
 
 /* ---------- editor ---------- */
 .editor {
@@ -1426,4 +1382,16 @@ legend {
   .pdf-toolbar .primary {
     margin-left: auto;
   }
+}
+
+.fit-grid {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+}
+.fit-grid .param {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
