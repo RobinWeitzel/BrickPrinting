@@ -54,6 +54,8 @@ interface State {
   setMatch(partNum: string, match: Match | null): void;
   setColorMapping(colorId: number, color: Color | null): void;
   pushRecentColor(c: ColorRef): void;
+  /** Replace a filament color everywhere it is used (filament list, parts in the open project, color map). */
+  replaceColor(from: Color, to: Color): void;
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -260,6 +262,24 @@ export const useStore = create<State>((setState, getState) => {
         else delete matches[partNum];
         return { ...p, matches };
       });
+    },
+    replaceColor(from, to) {
+      const same = (c: Color) => c.name === from.name && c.hex.toLowerCase() === from.hex.toLowerCase();
+      const { settings, project } = getState();
+      if (settings.filaments.some(same)) getState().updateSettings({ filaments: settings.filaments.map((f) => (same(f) ? to : f)) });
+      if (!project) return;
+      const fixRef = (r: ColorRef): ColorRef => ("custom" in r && same(r.custom) ? { custom: to } : r);
+      const touches =
+        project.steps.some((s) => s.items.some((i) => "custom" in i.color && same(i.color.custom))) ||
+        Object.values(project.colorMap).some(same) ||
+        (project.recentColors ?? []).some((r) => "custom" in r && same(r.custom));
+      if (!touches) return;
+      update((p) => ({
+        ...p,
+        steps: p.steps.map((s) => ({ ...s, items: s.items.map((i) => ({ ...i, color: fixRef(i.color) })) })),
+        colorMap: Object.fromEntries(Object.entries(p.colorMap).map(([k, c]) => [k, same(c) ? to : c])),
+        recentColors: p.recentColors?.map(fixRef),
+      }));
     },
     pushRecentColor(c) {
       const p = getState().project;

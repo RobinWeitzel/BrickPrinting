@@ -16,7 +16,9 @@ export interface BambuColor {
 }
 
 const store = createStore("brickprinting-bambu", "data");
-const CACHE_KEY = "colors";
+/** Display color for fully transparent filaments. */
+export const CLEAR_HEX = "#E6ECEF";
+const CACHE_KEY = "colors-v2"; // v2: transparent colors mapped to CLEAR_HEX
 const MAX_AGE = 7 * 24 * 3600 * 1000;
 
 interface Raw {
@@ -27,7 +29,8 @@ function parse(raw: Raw): BambuColor[] {
   return raw.data
     .filter((d) => d.fila_color?.length)
     .map((d) => {
-      const hexes = d.fila_color.map((c) => c.slice(0, 7).toUpperCase());
+      // "#RRGGBBAA": fully transparent spools ("Clear", "Transparent") are listed as #00000000 -> show a clear tint
+      const hexes = d.fila_color.map((c) => (/^#[0-9a-f]{6}00$/i.test(c) ? CLEAR_HEX : c.slice(0, 7).toUpperCase()));
       return { code: d.fila_color_code, material: d.fila_type, name: d.fila_color_name.en ?? Object.values(d.fila_color_name)[0] ?? d.fila_color_code, hex: hexes[0], hexes };
     });
 }

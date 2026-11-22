@@ -7,7 +7,8 @@ import type { Project } from "./lib/types";
 import { ExportDialog } from "./components/ExportDialog";
 import { InventoryView } from "./components/InventoryView";
 import { PdfDropZone, PdfViewer, usePdfDoc } from "./components/PdfViewer";
-import { SettingsDialog } from "./components/SettingsDialog";
+import { SettingsDialog, fixTransparentFilaments } from "./components/SettingsDialog";
+import { loadBambuColors } from "./lib/bambu";
 import { StepsPanel } from "./components/StepsPanel";
 
 export default function App() {
@@ -15,7 +16,12 @@ export default function App() {
   const project = useStore((s) => s.project);
   const init = useStore((s) => s.init);
   useEffect(() => {
-    init();
+    init().then(() => {
+      const { settings, replaceColor } = useStore.getState();
+      // only fetch the Bambu list if a filament could be one of the transparent ones stored as black
+      if (settings.filaments.some((f) => f.hex.toLowerCase() === "#000000" && !/black/i.test(f.name)))
+        loadBambuColors().then((cs) => fixTransparentFilaments(cs, replaceColor), () => {});
+    });
   }, [init]);
   if (!ready) return <div className="loading">Loading…</div>;
   return project ? <Workspace /> : <Home />;

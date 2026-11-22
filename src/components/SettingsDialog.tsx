@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BAMBU_COLORS_SOURCE, bambuFilamentName, loadBambuColors, materialsOf, type BambuColor } from "../lib/bambu";
+import { BAMBU_COLORS_SOURCE, CLEAR_HEX, bambuFilamentName, loadBambuColors, materialsOf, type BambuColor } from "../lib/bambu";
 import { useStore } from "../lib/store";
 import type { Color } from "../lib/types";
 import { CustomColor, Modal, Swatch } from "./ui";
@@ -54,9 +54,13 @@ function BambuPicker() {
   const [material, setMaterial] = useState("PLA Basic");
   const [query, setQuery] = useState("");
 
+  const replaceColor = useStore((s) => s.replaceColor);
   useEffect(() => {
-    loadBambuColors().then(setColors, (e) => setError(String(e.message ?? e)));
-  }, []);
+    loadBambuColors().then((cs) => {
+      setColors(cs);
+      fixTransparentFilaments(cs, replaceColor);
+    }, (e) => setError(String(e.message ?? e)));
+  }, [replaceColor]);
 
   const materials = useMemo(() => (colors ? materialsOf(colors) : []), [colors]);
   const q = query.trim().toLowerCase();
@@ -116,4 +120,15 @@ function BambuPicker() {
       )}
     </section>
   );
+}
+
+/** Filaments added before transparent colors were handled were stored as black; give them their clear tint. */
+export function fixTransparentFilaments(colors: BambuColor[], replaceColor: (from: Color, to: Color) => void) {
+  const filaments = useStore.getState().settings.filaments;
+  for (const c of colors) {
+    if (c.hex !== CLEAR_HEX) continue;
+    const name = bambuFilamentName(c);
+    const old = filaments.find((f) => f.name === name && f.hex.toLowerCase() === "#000000");
+    if (old) replaceColor(old, { name, hex: c.hex });
+  }
 }

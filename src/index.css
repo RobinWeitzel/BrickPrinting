@@ -618,15 +618,23 @@ th {
 /* ---------- color picker ---------- */
 .color-picker {
   position: relative;
+  min-width: 0;
+  max-width: 100%;
 }
 .color-button {
   padding: 2px 8px 2px 4px;
   font-size: 12px;
-  max-width: 220px;
+  max-width: 100%;
+  min-width: 0;
 }
 .color-name {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.item-text .row {
+  min-width: 0;
 }
 .popover {
   position: absolute;
